@@ -1,9 +1,13 @@
 {
   "name": "gymtracker",
-  "main": "expo-router/entry",
+  "main": "App.js",
   "version": "1.0.0",
   "dependencies": {
     "@expo/ui": "~56.0.11",
+    "@react-native-async-storage/async-storage": "2.2.0",
+    "@react-native-community/datetimepicker": "9.1.0",
+    "@react-navigation/native": "^7.2.4",
+    "@react-navigation/stack": "^7.9.2",
     "expo": "~56.0.3",
     "expo-constants": "~56.0.14",
     "expo-device": "~56.0.4",
@@ -20,10 +24,12 @@
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-native": "0.85.3",
+    "react-native-chart-kit": "^6.12.2",
     "react-native-gesture-handler": "~2.31.1",
     "react-native-reanimated": "4.3.1",
     "react-native-safe-area-context": "~5.7.0",
     "react-native-screens": "4.25.1",
+    "react-native-svg": "15.15.4",
     "react-native-web": "~0.21.0",
     "react-native-worklets": "0.8.3"
   },
