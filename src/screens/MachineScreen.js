@@ -246,7 +246,7 @@ export default function MachineScreen({ route }) {
           <View style={s.statsRow}>
             <View style={s.statCard}>
               <Text style={s.statNum}>{records.length}</Text>
-              <Text style={s.statLabel}>训练次数</Text>
+              <Text style={s.statLabel}>训练记录</Text>
             </View>
             <View style={s.statCard}>
               <Text style={s.statNum}>{trainDays}</Text>

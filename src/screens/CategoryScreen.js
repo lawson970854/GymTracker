@@ -125,7 +125,7 @@ export default function CategoryScreen({ route }) {
           <View style={s.statsRow}>
             <View style={s.statCard}>
               <Text style={s.statNum}>{allRecords.length}</Text>
-              <Text style={s.statLabel}>训练次数</Text>
+              <Text style={s.statLabel}>训练记录</Text>
             </View>
             <View style={s.statCard}>
               <Text style={s.statNum}>{chartEntries.length}</Text>
