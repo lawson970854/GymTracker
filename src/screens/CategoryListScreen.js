@@ -6,36 +6,36 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import { loadData, saveData, uid } from '../storage';
 
-export default function HomeScreen({ navigation }) {
-  const [gyms, setGyms] = useState([]);
+export default function CategoryListScreen({ navigation }) {
+  const [categories, setCategories] = useState([]);
   const [newName, setNewName] = useState('');
   const [adding, setAdding] = useState(false);
 
   useFocusEffect(useCallback(() => {
-    loadData().then(d => setGyms(d.gyms));
+    loadData().then(d => setCategories(d.categories || []));
   }, []));
 
-  const addGym = async () => {
+  const addCategory = async () => {
     const name = newName.trim();
     if (!name) return;
     const data = await loadData();
-    data.gyms.push({ id: uid(), name });
+    data.categories = data.categories || [];
+    data.categories.push({ id: uid(), name, items: [] });
     await saveData(data);
-    setGyms(data.gyms);
+    setCategories(data.categories);
     setNewName('');
     setAdding(false);
   };
 
-  const deleteGym = (gym) => {
-    Alert.alert('删除健身房', `确认删除「${gym.name}」及其所有记录？`, [
+  const deleteCategory = (cat) => {
+    Alert.alert('删除分类', `确认删除分类「${cat.name}」？（不会删除器械和记录）`, [
       { text: '取消', style: 'cancel' },
       {
         text: '删除', style: 'destructive', onPress: async () => {
           const data = await loadData();
-          data.gyms = data.gyms.filter(g => g.id !== gym.id);
-          data.records = data.records.filter(r => r.gymId !== gym.id);
+          data.categories = data.categories.filter(c => c.id !== cat.id);
           await saveData(data);
-          setGyms(data.gyms);
+          setCategories(data.categories);
         },
       },
     ]);
@@ -44,25 +44,27 @@ export default function HomeScreen({ navigation }) {
   return (
     <SafeAreaView style={s.safe}>
       <View style={s.container}>
-        <Text style={s.sectionTitle}>我的健身房</Text>
-
+        <Text style={s.hint}>长按分类可删除</Text>
         <FlatList
-          data={gyms}
-          keyExtractor={g => g.id}
-          contentContainerStyle={gyms.length === 0 && s.emptyContainer}
+          data={categories}
+          keyExtractor={c => c.id}
+          contentContainerStyle={categories.length === 0 && s.emptyContainer}
           renderItem={({ item }) => (
             <TouchableOpacity
-              style={s.gymCard}
-              onPress={() => navigation.navigate('Gym', { gymId: item.id, gymName: item.name })}
-              onLongPress={() => deleteGym(item)}
+              style={s.card}
+              onPress={() => navigation.navigate('Category', { categoryId: item.id, categoryName: item.name })}
+              onLongPress={() => deleteCategory(item)}
               delayLongPress={500}
             >
-              <Text style={s.gymName}>{item.name}</Text>
+              <View>
+                <Text style={s.catName}>{item.name}</Text>
+                <Text style={s.catSub}>{item.items?.length || 0} 个器械</Text>
+              </View>
               <Text style={s.chevron}>›</Text>
             </TouchableOpacity>
           )}
           ListEmptyComponent={
-            <Text style={s.empty}>还没有健身房{'\n'}点下方按钮添加一个</Text>
+            <Text style={s.empty}>还没有分类{'\n'}点下方按钮新建</Text>
           }
         />
 
@@ -70,14 +72,14 @@ export default function HomeScreen({ navigation }) {
           <View style={s.addRow}>
             <TextInput
               style={s.addInput}
-              placeholder="健身房名称"
+              placeholder="分类名称，如：胸推"
               value={newName}
               onChangeText={setNewName}
               autoFocus
               returnKeyType="done"
-              onSubmitEditing={addGym}
+              onSubmitEditing={addCategory}
             />
-            <TouchableOpacity style={s.confirmBtn} onPress={addGym}>
+            <TouchableOpacity style={s.confirmBtn} onPress={addCategory}>
               <Text style={s.confirmText}>确认</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => { setAdding(false); setNewName(''); }}>
@@ -86,7 +88,7 @@ export default function HomeScreen({ navigation }) {
           </View>
         ) : (
           <TouchableOpacity style={s.addBtn} onPress={() => setAdding(true)}>
-            <Text style={s.addBtnText}>＋ 添加健身房</Text>
+            <Text style={s.addBtnText}>＋ 新建分类</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -97,14 +99,15 @@ export default function HomeScreen({ navigation }) {
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#F7F7F7' },
   container: { flex: 1, padding: 16 },
-  sectionTitle: { fontSize: 13, fontWeight: '600', color: '#999', marginBottom: 10, letterSpacing: 0.5 },
-  gymCard: {
+  hint: { fontSize: 12, color: '#BBB', marginBottom: 10 },
+  card: {
     backgroundColor: '#fff', borderRadius: 12, padding: 16,
     marginBottom: 10, flexDirection: 'row', alignItems: 'center',
     shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 1,
   },
-  gymName: { flex: 1, fontSize: 17, fontWeight: '500', color: '#222' },
-  chevron: { fontSize: 22, color: '#CCC' },
+  catName: { fontSize: 17, fontWeight: '600', color: '#222', marginBottom: 3 },
+  catSub: { fontSize: 13, color: '#1D9E75' },
+  chevron: { fontSize: 22, color: '#CCC', marginLeft: 'auto' },
   emptyContainer: { flex: 1, justifyContent: 'center' },
   empty: { textAlign: 'center', color: '#BBB', fontSize: 15, lineHeight: 24, marginTop: 60 },
   addRow: {

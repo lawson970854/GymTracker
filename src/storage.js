@@ -5,9 +5,14 @@ const KEY = 'gym_tracker_v1';
 export async function loadData() {
   try {
     const raw = await AsyncStorage.getItem(KEY);
-    return raw ? JSON.parse(raw) : { gyms: [], records: [] };
+    const data = raw ? JSON.parse(raw) : {};
+    return {
+      gyms: data.gyms || [],
+      records: data.records || [],
+      categories: data.categories || [],
+    };
   } catch {
-    return { gyms: [], records: [] };
+    return { gyms: [], records: [], categories: [] };
   }
 }
 

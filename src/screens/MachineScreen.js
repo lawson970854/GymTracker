@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, TextInput,
-  StyleSheet, SafeAreaView, Platform, Dimensions, Alert,
+  StyleSheet, SafeAreaView, Platform, Dimensions, Alert, Modal,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { LineChart } from 'react-native-chart-kit';
@@ -12,6 +12,8 @@ import TrophyModal from '../components/TrophyModal';
 const W = Dimensions.get('window').width;
 
 function DatePicker({ value, onChange }) {
+  const [show, setShow] = useState(false);
+
   if (Platform.OS === 'web') {
     return (
       <TextInput
@@ -22,15 +24,35 @@ function DatePicker({ value, onChange }) {
       />
     );
   }
+
   const DateTimePicker = require('@react-native-community/datetimepicker').default;
+
   return (
-    <DateTimePicker
-      value={new Date(value)}
-      mode="date"
-      display="compact"
-      onChange={(_, d) => d && onChange(d.toISOString().slice(0, 10))}
-      style={{ alignSelf: 'flex-start' }}
-    />
+    <>
+      <TouchableOpacity style={dp.btn} onPress={() => setShow(true)}>
+        <Text style={dp.btnText}>{value}</Text>
+        <Text style={dp.btnIcon}>📅</Text>
+      </TouchableOpacity>
+
+      <Modal transparent visible={show} animationType="fade" onRequestClose={() => setShow(false)}>
+        <TouchableOpacity style={dp.overlay} activeOpacity={1} onPress={() => setShow(false)}>
+          <View style={dp.sheet} onStartShouldSetResponder={() => true}>
+            <DateTimePicker
+              value={new Date(value)}
+              mode="date"
+              display="inline"
+              onChange={(_, d) => {
+                if (d) {
+                  onChange(d.toISOString().slice(0, 10));
+                  setShow(false); // 选完自动关闭
+                }
+              }}
+              style={{ width: '100%' }}
+            />
+          </View>
+        </TouchableOpacity>
+      </Modal>
+    </>
   );
 }
 
@@ -38,6 +60,21 @@ const dp = StyleSheet.create({
   webInput: {
     borderWidth: 1, borderColor: '#DDD', borderRadius: 8,
     paddingHorizontal: 12, paddingVertical: 8, fontSize: 15,
+  },
+  btn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    borderWidth: 1, borderColor: '#DDD', borderRadius: 8,
+    paddingHorizontal: 14, paddingVertical: 10, backgroundColor: '#FAFAFA',
+  },
+  btnText: { fontSize: 16, color: '#333', fontWeight: '500' },
+  btnIcon: { fontSize: 16 },
+  overlay: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center', alignItems: 'center',
+  },
+  sheet: {
+    backgroundColor: '#fff', borderRadius: 16, overflow: 'hidden',
+    margin: 20, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 12, elevation: 8,
   },
 });
 
@@ -56,6 +93,13 @@ export default function MachineScreen({ route }) {
         .filter(r => r.gymId === gymId && r.machineId === machineId)
         .sort((a, b) => b.date.localeCompare(a.date));
       setRecords(recs);
+
+      // 用最佳记录填充默认值
+      const best = getBestRecord(d.records, gymId, machineId);
+      if (best) {
+        setWeight(String(best.weight));
+        setSets([...best.sets]);
+      }
     });
   }, [gymId, machineId]));
 
@@ -84,10 +128,19 @@ export default function MachineScreen({ route }) {
       setTrophy('silver');
     }
 
-    setRecords(myRecs.sort((a, b) => b.date.localeCompare(a.date)));
-    setWeight('');
-    setSets([10, 10, 10]);
+    const sorted = myRecs.sort((a, b) => b.date.localeCompare(a.date));
+    setRecords(sorted);
     setDate(today());
+
+    // 保存后自动以最新最高记录作为默认值
+    const newBest = getBestRecord(data.records, gymId, machineId);
+    if (newBest) {
+      setWeight(String(newBest.weight));
+      setSets([...newBest.sets]);
+    } else {
+      setWeight('');
+      setSets([10, 10, 10]);
+    }
   };
 
   const chartData = () => {
@@ -95,7 +148,8 @@ export default function MachineScreen({ route }) {
     records.forEach(r => {
       if (!byDate[r.date] || r.volume > byDate[r.date]) byDate[r.date] = r.volume;
     });
-    const entries = Object.entries(byDate).sort(([a], [b]) => a.localeCompare(b)).slice(-10);
+    // 全部历史，按日期升序
+    const entries = Object.entries(byDate).sort(([a], [b]) => a.localeCompare(b));
     return {
       labels: entries.map(([d]) => d.slice(5)),
       data: entries.map(([, v]) => v),
@@ -107,7 +161,7 @@ export default function MachineScreen({ route }) {
 
   return (
     <SafeAreaView style={s.safe}>
-      <ScrollView style={s.scroll} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
+      <ScrollView style={s.scroll} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled" nestedScrollEnabled={true}>
 
         {bestRecord && (
           <View style={s.bestCard}>
@@ -151,7 +205,7 @@ export default function MachineScreen({ route }) {
 
         {hasChart && (
           <View style={s.chartCard}>
-            <Text style={s.sectionTitle}>训练量趋势（最近 10 次）</Text>
+            <Text style={s.sectionTitle}>全部训练量趋势</Text>
             <LineChart
               data={{ labels, datasets: [{ data: chartValues }] }}
               width={W - 48}
@@ -196,7 +250,7 @@ export default function MachineScreen({ route }) {
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#F7F7F7' },
   scroll: { flex: 1 },
-  content: { padding: 16, paddingBottom: 40 },
+  content: { padding: 16, paddingBottom: 80 },
   bestCard: {
     backgroundColor: '#FFF9E6', borderRadius: 12, padding: 16, marginBottom: 12,
     borderWidth: 1, borderColor: '#FFD700',
