@@ -5,7 +5,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Text } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 import HomeScreen from './src/screens/HomeScreen';
 import GymScreen from './src/screens/GymScreen';
@@ -44,59 +44,57 @@ function CategoryStack() {
   );
 }
 
-function TabIcon({ emoji, focused }) {
-  return <Text style={{ fontSize: 22, opacity: focused ? 1 : 0.45 }}>{emoji}</Text>;
-}
-
 function MainTabs() {
   return (
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
+        tabBarShowLabel: false,
         tabBarActiveTintColor: '#1D9E75',
-        tabBarInactiveTintColor: '#999',
+        tabBarInactiveTintColor: '#C0C0C0',
         tabBarStyle: {
           backgroundColor: '#fff',
           borderTopColor: '#EBEBEB',
-          paddingBottom: 6,
-          paddingTop: 4,
-          height: 60,
+          height: 54,
         },
-        tabBarLabelStyle: { fontSize: 11, fontWeight: '500' },
       }}
     >
       <Tab.Screen
         name="GymTab"
         component={GymStack}
         options={{
-          tabBarLabel: '健身房',
-          tabBarIcon: ({ focused }) => <TabIcon emoji="🏋️" focused={focused} />,
-        }}
-      />
-      <Tab.Screen
-        name="CalendarTab"
-        component={CalendarScreen}
-        options={{
-          tabBarLabel: '日期',
-          tabBarIcon: ({ focused }) => <TabIcon emoji="📅" focused={focused} />,
-          header: () => null,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="barbell-outline" size={size} color={color} />
+          ),
         }}
       />
       <Tab.Screen
         name="CategoryTab"
         component={CategoryStack}
         options={{
-          tabBarLabel: '分类',
-          tabBarIcon: ({ focused }) => <TabIcon emoji="🗂️" focused={focused} />,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="grid-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="CalendarTab"
+        component={CalendarScreen}
+        options={{
+          header: () => null,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="calendar-outline" size={size} color={color} />
+          ),
         }}
       />
       <Tab.Screen
         name="ProfileTab"
         component={ProfileScreen}
         options={{
-          tabBarLabel: '我的',
-          tabBarIcon: ({ focused }) => <TabIcon emoji="👤" focused={focused} />,
           header: () => null,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="person-outline" size={size} color={color} />
+          ),
         }}
       />
     </Tab.Navigator>
