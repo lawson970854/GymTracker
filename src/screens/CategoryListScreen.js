@@ -4,6 +4,7 @@ import {
   TextInput, Alert, StyleSheet, SafeAreaView,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { Swipeable } from 'react-native-gesture-handler';
 import { loadData, saveData, uid } from '../storage';
 
 export default function CategoryListScreen({ navigation }) {
@@ -44,24 +45,29 @@ export default function CategoryListScreen({ navigation }) {
   return (
     <SafeAreaView style={s.safe}>
       <View style={s.container}>
-        <Text style={s.hint}>长按分类可删除</Text>
         <FlatList
           data={categories}
           keyExtractor={c => c.id}
           contentContainerStyle={categories.length === 0 && s.emptyContainer}
           renderItem={({ item }) => (
-            <TouchableOpacity
-              style={s.card}
-              onPress={() => navigation.navigate('Category', { categoryId: item.id, categoryName: item.name })}
-              onLongPress={() => deleteCategory(item)}
-              delayLongPress={500}
+            <Swipeable
+              renderRightActions={() => (
+                <TouchableOpacity style={s.deleteAction} onPress={() => deleteCategory(item)}>
+                  <Text style={s.deleteActionText}>删除</Text>
+                </TouchableOpacity>
+              )}
             >
-              <View>
-                <Text style={s.catName}>{item.name}</Text>
-                <Text style={s.catSub}>{item.items?.length || 0} 个器械</Text>
-              </View>
-              <Text style={s.chevron}>›</Text>
-            </TouchableOpacity>
+              <TouchableOpacity
+                style={s.card}
+                onPress={() => navigation.navigate('Category', { categoryId: item.id, categoryName: item.name })}
+              >
+                <View>
+                  <Text style={s.catName}>{item.name}</Text>
+                  <Text style={s.catSub}>{item.items?.length || 0} 个器械</Text>
+                </View>
+                <Text style={s.chevron}>›</Text>
+              </TouchableOpacity>
+            </Swipeable>
           )}
           ListEmptyComponent={
             <Text style={s.empty}>还没有分类{'\n'}点下方按钮新建</Text>
@@ -99,7 +105,11 @@ export default function CategoryListScreen({ navigation }) {
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#F7F7F7' },
   container: { flex: 1, padding: 16 },
-  hint: { fontSize: 12, color: '#BBB', marginBottom: 10 },
+  deleteAction: {
+    backgroundColor: '#FF3B30', justifyContent: 'center', alignItems: 'center',
+    width: 72, marginBottom: 10, borderRadius: 12,
+  },
+  deleteActionText: { color: '#fff', fontSize: 14, fontWeight: '600' },
   card: {
     backgroundColor: '#fff', borderRadius: 12, padding: 16,
     marginBottom: 10, flexDirection: 'row', alignItems: 'center',

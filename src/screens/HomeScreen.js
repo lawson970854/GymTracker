@@ -4,6 +4,7 @@ import {
   TextInput, Alert, StyleSheet, SafeAreaView,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { Swipeable } from 'react-native-gesture-handler';
 import { loadData, saveData, uid } from '../storage';
 
 export default function HomeScreen({ navigation }) {
@@ -51,15 +52,21 @@ export default function HomeScreen({ navigation }) {
           keyExtractor={g => g.id}
           contentContainerStyle={gyms.length === 0 && s.emptyContainer}
           renderItem={({ item }) => (
-            <TouchableOpacity
-              style={s.gymCard}
-              onPress={() => navigation.navigate('Gym', { gymId: item.id, gymName: item.name })}
-              onLongPress={() => deleteGym(item)}
-              delayLongPress={500}
+            <Swipeable
+              renderRightActions={() => (
+                <TouchableOpacity style={s.deleteAction} onPress={() => deleteGym(item)}>
+                  <Text style={s.deleteActionText}>删除</Text>
+                </TouchableOpacity>
+              )}
             >
-              <Text style={s.gymName}>{item.name}</Text>
-              <Text style={s.chevron}>›</Text>
-            </TouchableOpacity>
+              <TouchableOpacity
+                style={s.gymCard}
+                onPress={() => navigation.navigate('Gym', { gymId: item.id, gymName: item.name })}
+              >
+                <Text style={s.gymName}>{item.name}</Text>
+                <Text style={s.chevron}>›</Text>
+              </TouchableOpacity>
+            </Swipeable>
           )}
           ListEmptyComponent={
             <Text style={s.empty}>还没有健身房{'\n'}点下方按钮添加一个</Text>
@@ -98,6 +105,11 @@ const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#F7F7F7' },
   container: { flex: 1, padding: 16 },
   sectionTitle: { fontSize: 13, fontWeight: '600', color: '#999', marginBottom: 10, letterSpacing: 0.5 },
+  deleteAction: {
+    backgroundColor: '#FF3B30', justifyContent: 'center', alignItems: 'center',
+    width: 72, marginBottom: 10, borderRadius: 12,
+  },
+  deleteActionText: { color: '#fff', fontSize: 14, fontWeight: '600' },
   gymCard: {
     backgroundColor: '#fff', borderRadius: 12, padding: 16,
     marginBottom: 10, flexDirection: 'row', alignItems: 'center',
