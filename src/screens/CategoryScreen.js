@@ -105,7 +105,7 @@ export default function CategoryScreen({ route }) {
             <Text style={s.bestLabel}>🏆 分类最高记录</Text>
             <Text style={s.bestVolume}>{overallBest.volume} kg·次</Text>
             <Text style={s.bestDetail}>
-              {overallBest.weight}kg · {overallBest.date}
+              {overallBest.weight}kg × {overallBest.sets?.length || 0}组（{overallBest.sets?.join('/') || '-'} 次）· {overallBest.date}
             </Text>
             {bestItem && (
               <Text style={s.bestSource}>
