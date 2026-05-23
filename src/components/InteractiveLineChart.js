@@ -165,21 +165,21 @@ export default function InteractiveLineChart({
                 rx={8} fill="#2C2C2C" opacity={0.88}
               />
               <SvgText
-                x={tBx + TW / 2} y={tBy + 15}
-                textAnchor="middle" fontSize={11} fill="#FFFFFF" opacity={0.85}
+                x={tBx + 10} y={tBy + 15}
+                textAnchor="start" fontSize={11} fill="#FFFFFF" opacity={0.85}
               >
                 {labels[activeIdx]}
               </SvgText>
               <SvgText
-                x={tBx + TW / 2} y={tBy + (hasExtra ? 31 : 33)}
-                textAnchor="middle" fontSize={13} fill="#4DEBA5" fontWeight="bold"
+                x={tBx + 10} y={tBy + (hasExtra ? 31 : 33)}
+                textAnchor="start" fontSize={13} fill="#4DEBA5" fontWeight="bold"
               >
                 {data[activeIdx].toLocaleString()} kg·次
               </SvgText>
               {hasExtra && (
                 <SvgText
-                  x={tBx + TW / 2} y={tBy + 49}
-                  textAnchor="middle" fontSize={10} fill="#BBBBBB"
+                  x={tBx + 10} y={tBy + 49}
+                  textAnchor="start" fontSize={10} fill="#BBBBBB"
                 >
                   {extraText}
                 </SvgText>
