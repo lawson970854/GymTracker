@@ -253,8 +253,8 @@ export default function MachineScreen({ route }) {
               <Text style={s.statLabel}>训练天数</Text>
             </View>
             <View style={s.statCard}>
-              <Text style={[s.statNum, totalVolume >= 10000 && s.statNumSm]}>
-                {totalVolume.toLocaleString()}
+              <Text style={s.statNum}>
+                {totalVolume >= 10000 ? `${(totalVolume / 10000).toFixed(1)}万` : totalVolume.toLocaleString()}
               </Text>
               <Text style={s.statLabel}>总训练量</Text>
             </View>
@@ -397,7 +397,6 @@ const s = StyleSheet.create({
     shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 1,
   },
   statNum: { fontSize: 20, fontWeight: '800', color: '#1D9E75', marginBottom: 2 },
-  statNumSm: { fontSize: 15 },
   statLabel: { fontSize: 12, color: '#999' },
   formCard: {
     backgroundColor: '#fff', borderRadius: 12, padding: 16,
