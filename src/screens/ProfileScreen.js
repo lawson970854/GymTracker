@@ -6,7 +6,7 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import { loadData, saveData } from '../storage';
 
-export default function ProfileScreen() {
+export default function ProfileScreen({ navigation }) {
   const [gyms, setGyms] = useState([]);
   const [records, setRecords] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -68,22 +68,22 @@ export default function ProfileScreen() {
         <View style={s.card}>
           <Text style={s.cardTitle}>数据概览</Text>
           <View style={s.statsGrid}>
-            <View style={s.statItem}>
+            <TouchableOpacity style={s.statItem} onPress={() => navigation.navigate('GymTab')}>
               <Text style={s.statNum}>{gyms.length}</Text>
               <Text style={s.statLabel}>健身房</Text>
-            </View>
-            <View style={s.statItem}>
+            </TouchableOpacity>
+            <TouchableOpacity style={s.statItem} onPress={() => navigation.navigate('GymTab')}>
               <Text style={s.statNum}>{totalMachines}</Text>
               <Text style={s.statLabel}>器械</Text>
-            </View>
-            <View style={s.statItem}>
+            </TouchableOpacity>
+            <TouchableOpacity style={s.statItem} onPress={() => navigation.navigate('CalendarTab')}>
               <Text style={s.statNum}>{records.length}</Text>
               <Text style={s.statLabel}>训练记录</Text>
-            </View>
-            <View style={s.statItem}>
+            </TouchableOpacity>
+            <TouchableOpacity style={s.statItem} onPress={() => navigation.navigate('CategoryTab')}>
               <Text style={s.statNum}>{categories.length}</Text>
               <Text style={s.statLabel}>分类</Text>
-            </View>
+            </TouchableOpacity>
           </View>
         </View>
 
