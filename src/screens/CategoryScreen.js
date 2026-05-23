@@ -42,10 +42,15 @@ export default function CategoryScreen({ route }) {
   );
 
   const byDate = {};
+  const byDateGyms = {};
   allRecords.forEach(r => {
     byDate[r.date] = (byDate[r.date] || 0) + r.volume;
+    if (!byDateGyms[r.date]) byDateGyms[r.date] = new Set();
+    const item = enrichedItems.find(i => i.gymId === r.gymId && i.machineId === r.machineId);
+    if (item) byDateGyms[r.date].add(item.gymName);
   });
   const chartEntries = Object.entries(byDate).sort(([a], [b]) => a.localeCompare(b));
+  const chartGymLabels = chartEntries.map(([d]) => [...(byDateGyms[d] || [])].join('、'));
   const hasChart = chartEntries.length >= 2;
 
   const totalVolume = allRecords.reduce((s, r) => s + r.volume, 0);
@@ -141,6 +146,7 @@ export default function CategoryScreen({ route }) {
               width={W - 48}
               height={210}
               gradientId="category_grad"
+              tooltipExtra={chartGymLabels}
             />
           </View>
         )}

@@ -13,7 +13,8 @@ import Svg, {
  *   width       number     总宽度（含内边距）
  *   height      number     总高度（含内边距），默认 210
  *   color       string     主题色，默认 #1D9E75
- *   gradientId  string     SVG gradient id，多图共存时须唯一，默认 "ilc_grad"
+ *   gradientId   string     SVG gradient id，多图共存时须唯一，默认 "ilc_grad"
+ *   tooltipExtra string[]   可选，每个数据点对应的附加文字（如健身房名），显示在气泡第三行
  */
 export default function InteractiveLineChart({
   labels,
@@ -22,6 +23,7 @@ export default function InteractiveLineChart({
   height = 210,
   color = '#1D9E75',
   gradientId = 'ilc_grad',
+  tooltipExtra = null,
 }) {
   const [activeIdx, setActiveIdx] = useState(null);
   const activeIdxRef = useRef(null); // 避免闭包过时
@@ -78,7 +80,9 @@ export default function InteractiveLineChart({
   });
 
   // ---- Tooltip 位置 ----
-  const TW = 118, TH = 44;
+  const extraText = activeIdx !== null && tooltipExtra ? (tooltipExtra[activeIdx] || '') : '';
+  const hasExtra = !!extraText;
+  const TW = 128, TH = hasExtra ? 60 : 44;
   let tBx = 0, tBy = 0;
   if (activeIdx !== null) {
     tBx = xOf(activeIdx) - TW / 2;
@@ -167,11 +171,19 @@ export default function InteractiveLineChart({
                 {labels[activeIdx]}
               </SvgText>
               <SvgText
-                x={tBx + TW / 2} y={tBy + 33}
+                x={tBx + TW / 2} y={tBy + (hasExtra ? 31 : 33)}
                 textAnchor="middle" fontSize={13} fill="#4DEBA5" fontWeight="bold"
               >
                 {data[activeIdx].toLocaleString()} kg·次
               </SvgText>
+              {hasExtra && (
+                <SvgText
+                  x={tBx + TW / 2} y={tBy + 49}
+                  textAnchor="middle" fontSize={10} fill="#BBBBBB"
+                >
+                  {extraText}
+                </SvgText>
+              )}
             </>
           )}
 
