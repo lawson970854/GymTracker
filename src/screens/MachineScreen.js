@@ -397,7 +397,7 @@ const s = StyleSheet.create({
   },
   histRow: {
     flexDirection: 'row', alignItems: 'center',
-    paddingVertical: 8, borderBottomWidth: 1, borderColor: '#F0F0F0',
+    paddingVertical: 14, borderBottomWidth: 1, borderColor: '#F0F0F0',
   },
   histDate: { width: 90, fontSize: 13, color: '#999' },
   histDetail: { flex: 1, fontSize: 13, color: '#555' },
