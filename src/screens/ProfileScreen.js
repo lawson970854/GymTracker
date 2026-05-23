@@ -68,11 +68,11 @@ export default function ProfileScreen({ navigation }) {
         <View style={s.card}>
           <Text style={s.cardTitle}>数据概览</Text>
           <View style={s.statsGrid}>
-            <TouchableOpacity style={s.statItem} onPress={() => navigation.navigate('GymTab')}>
+            <TouchableOpacity style={s.statItem} onPress={() => navigation.navigate('GymTab', { screen: 'Home' })}>
               <Text style={s.statNum}>{gyms.length}</Text>
               <Text style={s.statLabel}>健身房</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={s.statItem} onPress={() => navigation.navigate('GymTab')}>
+            <TouchableOpacity style={s.statItem} onPress={() => navigation.navigate('GymTab', { screen: 'Home' })}>
               <Text style={s.statNum}>{totalMachines}</Text>
               <Text style={s.statLabel}>器械</Text>
             </TouchableOpacity>
