@@ -4,6 +4,7 @@ import {
   StyleSheet, SafeAreaView, Platform, Dimensions, Alert, Modal,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { Swipeable } from 'react-native-gesture-handler';
 import { loadData, saveData, uid, calcVolume, getBestRecord, today } from '../storage';
 import SetInput from '../components/SetInput';
 import TrophyModal from '../components/TrophyModal';
@@ -286,16 +287,27 @@ export default function MachineScreen({ route }) {
           <View style={s.historyCard}>
             <Text style={s.sectionTitle}>历史记录</Text>
             {records.slice(0, 20).map(r => (
-              <View key={r.id} style={s.histRow}>
-                <Text style={s.histDate}>{r.date}</Text>
-                <Text style={s.histDetail}>
-                  {r.weight}kg × {r.sets?.join('/')} 次
-                </Text>
-                <Text style={s.histVol}>{r.volume}</Text>
-                <TouchableOpacity onPress={() => showActions(r)} style={s.moreBtn}>
-                  <Text style={s.moreBtnText}>···</Text>
-                </TouchableOpacity>
-              </View>
+              <Swipeable
+                key={r.id}
+                renderRightActions={() => (
+                  <View style={s.swipeActions}>
+                    <TouchableOpacity style={s.editAction} onPress={() => openEdit(r)}>
+                      <Text style={s.swipeActionText}>编辑</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={s.deleteAction} onPress={() => deleteRecord(r)}>
+                      <Text style={s.swipeActionText}>删除</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              >
+                <View style={s.histRow}>
+                  <Text style={s.histDate}>{r.date}</Text>
+                  <Text style={s.histDetail}>
+                    {r.weight}kg × {r.sets?.join('/')} 次
+                  </Text>
+                  <Text style={s.histVol}>{r.volume}</Text>
+                </View>
+              </Swipeable>
             ))}
           </View>
         )}
@@ -389,9 +401,15 @@ const s = StyleSheet.create({
   },
   histDate: { width: 90, fontSize: 13, color: '#999' },
   histDetail: { flex: 1, fontSize: 13, color: '#555' },
-  histVol: { fontSize: 14, fontWeight: '700', color: '#1D9E75', marginRight: 4 },
-  moreBtn: { paddingHorizontal: 8, paddingVertical: 4 },
-  moreBtnText: { fontSize: 16, color: '#BBB', letterSpacing: 1 },
+  histVol: { fontSize: 14, fontWeight: '700', color: '#1D9E75' },
+  swipeActions: { flexDirection: 'row' },
+  editAction: {
+    backgroundColor: '#1D9E75', justifyContent: 'center', alignItems: 'center', width: 60,
+  },
+  deleteAction: {
+    backgroundColor: '#FF3B30', justifyContent: 'center', alignItems: 'center', width: 60,
+  },
+  swipeActionText: { color: '#fff', fontSize: 13, fontWeight: '600' },
   editOverlay: {
     flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end',
   },
