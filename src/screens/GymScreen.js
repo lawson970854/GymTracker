@@ -4,6 +4,7 @@ import {
   TextInput, Alert, StyleSheet, SafeAreaView,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { Swipeable } from 'react-native-gesture-handler';
 import { loadData, saveData, uid, getBestRecord } from '../storage';
 
 export default function GymScreen({ navigation, route }) {
@@ -60,27 +61,31 @@ export default function GymScreen({ navigation, route }) {
   return (
     <SafeAreaView style={s.safe}>
       <View style={s.container}>
-        <Text style={s.hint}>长按器械可删除</Text>
-
         <FlatList
           data={machines}
           keyExtractor={m => m.id}
           contentContainerStyle={machines.length === 0 && s.emptyContainer}
           renderItem={({ item }) => (
-            <TouchableOpacity
-              style={s.card}
-              onPress={() => navigation.navigate('Machine', {
-                gymId, gymName, machineId: item.id, machineName: item.name,
-              })}
-              onLongPress={() => deleteMachine(item)}
-              delayLongPress={500}
+            <Swipeable
+              renderRightActions={() => (
+                <TouchableOpacity style={s.deleteAction} onPress={() => deleteMachine(item)}>
+                  <Text style={s.deleteActionText}>删除</Text>
+                </TouchableOpacity>
+              )}
             >
-              <View>
-                <Text style={s.machineName}>{item.name}</Text>
-                <Text style={s.best}>{bestFor(item.id)}</Text>
-              </View>
-              <Text style={s.chevron}>›</Text>
-            </TouchableOpacity>
+              <TouchableOpacity
+                style={s.card}
+                onPress={() => navigation.navigate('Machine', {
+                  gymId, gymName, machineId: item.id, machineName: item.name,
+                })}
+              >
+                <View>
+                  <Text style={s.machineName}>{item.name}</Text>
+                  <Text style={s.best}>{bestFor(item.id)}</Text>
+                </View>
+                <Text style={s.chevron}>›</Text>
+              </TouchableOpacity>
+            </Swipeable>
           )}
           ListEmptyComponent={
             <Text style={s.empty}>还没有器械{'\n'}点下方按钮添加</Text>
@@ -118,7 +123,11 @@ export default function GymScreen({ navigation, route }) {
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#F7F7F7' },
   container: { flex: 1, padding: 16 },
-  hint: { fontSize: 12, color: '#BBB', marginBottom: 10 },
+  deleteAction: {
+    backgroundColor: '#FF3B30', justifyContent: 'center', alignItems: 'center',
+    width: 72, marginBottom: 10, borderRadius: 12,
+  },
+  deleteActionText: { color: '#fff', fontSize: 14, fontWeight: '600' },
   card: {
     backgroundColor: '#fff', borderRadius: 12, padding: 16,
     marginBottom: 10, flexDirection: 'row', alignItems: 'center',
