@@ -11,7 +11,6 @@ import HomeScreen from './src/screens/HomeScreen';
 import GymScreen from './src/screens/GymScreen';
 import MachineScreen from './src/screens/MachineScreen';
 import CalendarScreen from './src/screens/CalendarScreen';
-import TrendsScreen from './src/screens/TrendsScreen';
 import CategoryListScreen from './src/screens/CategoryListScreen';
 import CategoryScreen from './src/screens/CategoryScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
@@ -80,15 +79,6 @@ function MainTabs() {
         options={{
           tabBarLabel: '日期',
           tabBarIcon: ({ focused }) => <TabIcon emoji="📅" focused={focused} />,
-          header: () => null,
-        }}
-      />
-      <Tab.Screen
-        name="TrendsTab"
-        component={TrendsScreen}
-        options={{
-          tabBarLabel: '趋势',
-          tabBarIcon: ({ focused }) => <TabIcon emoji="📈" focused={focused} />,
           header: () => null,
         }}
       />

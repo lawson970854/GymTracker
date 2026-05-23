@@ -80,6 +80,7 @@ export default function CalendarScreen() {
   });
   const trendEntries = Object.entries(allByDate).sort(([a], [b]) => a.localeCompare(b));
   const hasTrend = trendEntries.length >= 2;
+  const highlightIdx = trendEntries.findIndex(([d]) => d === selectedDate);
 
   return (
     <SafeAreaView style={s.safe}>
@@ -141,6 +142,7 @@ export default function CalendarScreen() {
               width={W - 48}
               height={210}
               gradientId="calendar_grad"
+              highlightIndex={highlightIdx >= 0 ? highlightIdx : null}
             />
           </View>
         )}

@@ -14,7 +14,8 @@ import Svg, {
  *   height      number     总高度（含内边距），默认 210
  *   color       string     主题色，默认 #1D9E75
  *   gradientId   string     SVG gradient id，多图共存时须唯一，默认 "ilc_grad"
- *   tooltipExtra string[]   可选，每个数据点对应的附加文字（如健身房名），显示在气泡第三行
+ *   tooltipExtra   string[]   可选，每个数据点对应的附加文字（如健身房名），显示在气泡第三行
+ *   highlightIndex number    可选，需要高亮显示的数据点 index（橙色大点）
  */
 export default function InteractiveLineChart({
   labels,
@@ -24,6 +25,7 @@ export default function InteractiveLineChart({
   color = '#1D9E75',
   gradientId = 'ilc_grad',
   tooltipExtra = null,
+  highlightIndex = null,
 }) {
   const [activeIdx, setActiveIdx] = useState(null);
   const activeIdxRef = useRef(null); // 避免闭包过时
@@ -126,9 +128,11 @@ export default function InteractiveLineChart({
           {/* 折线 */}
           <Path d={linePath} stroke={color} strokeWidth={2.2} fill="none" strokeLinecap="round" strokeLinejoin="round" />
 
-          {/* 无交互时显示小圆点 */}
+          {/* 无交互时显示小圆点（高亮点用橙色大圆） */}
           {activeIdx === null && data.map((v, i) => (
-            <Circle key={i} cx={xOf(i)} cy={yOf(v)} r={3.5} fill={color} />
+            i === highlightIndex
+              ? <Circle key={i} cx={xOf(i)} cy={yOf(v)} r={6} fill="#FF9500" stroke="#fff" strokeWidth={2} />
+              : <Circle key={i} cx={xOf(i)} cy={yOf(v)} r={3.5} fill={color} />
           ))}
 
           {/* X 轴标签 */}
