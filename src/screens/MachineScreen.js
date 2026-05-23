@@ -111,6 +111,8 @@ export default function MachineScreen({ route }) {
   }, [gymId, machineId]));
 
   const bestRecord = getBestRecord(records, gymId, machineId);
+  const totalVolume = records.reduce((s, r) => s + r.volume, 0);
+  const trainDays = new Set(records.map(r => r.date)).size;
 
   const save = async () => {
     const w = parseFloat(weight);
@@ -237,6 +239,25 @@ export default function MachineScreen({ route }) {
             <Text style={s.bestDetail}>
               {bestRecord.weight}kg × {bestRecord.sets.length}组（{bestRecord.sets.join('/')} 次） · {bestRecord.date}
             </Text>
+          </View>
+        )}
+
+        {records.length > 0 && (
+          <View style={s.statsRow}>
+            <View style={s.statCard}>
+              <Text style={s.statNum}>{records.length}</Text>
+              <Text style={s.statLabel}>训练次数</Text>
+            </View>
+            <View style={s.statCard}>
+              <Text style={s.statNum}>{trainDays}</Text>
+              <Text style={s.statLabel}>训练天数</Text>
+            </View>
+            <View style={s.statCard}>
+              <Text style={[s.statNum, totalVolume >= 10000 && s.statNumSm]}>
+                {totalVolume.toLocaleString()}
+              </Text>
+              <Text style={s.statLabel}>总训练量</Text>
+            </View>
           </View>
         )}
 
@@ -370,6 +391,14 @@ const s = StyleSheet.create({
   bestLabel: { fontSize: 13, color: '#B8860B', fontWeight: '600', marginBottom: 4 },
   bestVolume: { fontSize: 28, fontWeight: '800', color: '#333', marginBottom: 2 },
   bestDetail: { fontSize: 13, color: '#888' },
+  statsRow: { flexDirection: 'row', gap: 10, marginBottom: 12 },
+  statCard: {
+    flex: 1, backgroundColor: '#fff', borderRadius: 12, padding: 14, alignItems: 'center',
+    shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 1,
+  },
+  statNum: { fontSize: 20, fontWeight: '800', color: '#1D9E75', marginBottom: 2 },
+  statNumSm: { fontSize: 15 },
+  statLabel: { fontSize: 12, color: '#999' },
   formCard: {
     backgroundColor: '#fff', borderRadius: 12, padding: 16,
     marginBottom: 12, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 1,
