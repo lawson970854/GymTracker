@@ -4,8 +4,8 @@ import {
   StyleSheet, SafeAreaView, Dimensions, Alert,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { LineChart } from 'react-native-chart-kit';
 import { loadData, saveData, calcVolume } from '../storage';
+import InteractiveLineChart from '../components/InteractiveLineChart';
 
 const W = Dimensions.get('window').width;
 
@@ -51,6 +51,9 @@ export default function CategoryScreen({ route }) {
   const totalVolume = allRecords.reduce((s, r) => s + r.volume, 0);
   const overallBest = allRecords.length
     ? allRecords.reduce((b, r) => r.volume > b.volume ? r : b, allRecords[0])
+    : null;
+  const bestItem = overallBest
+    ? enrichedItems.find(i => i.gymId === overallBest.gymId && i.machineId === overallBest.machineId)
     : null;
 
   const removeItem = (item) => {
@@ -104,6 +107,11 @@ export default function CategoryScreen({ route }) {
             <Text style={s.bestDetail}>
               {overallBest.weight}kg · {overallBest.date}
             </Text>
+            {bestItem && (
+              <Text style={s.bestSource}>
+                {bestItem.gymName}  ·  {bestItem.machineName}
+              </Text>
+            )}
           </View>
         )}
 
@@ -126,25 +134,13 @@ export default function CategoryScreen({ route }) {
 
         {hasChart && (
           <View style={s.chartCard}>
-            <Text style={s.sectionTitle}>合并训练量趋势</Text>
-            <LineChart
-              data={{
-                labels: chartEntries.map(([d]) => d.slice(5)),
-                datasets: [{ data: chartEntries.map(([, v]) => v) }],
-              }}
+            <Text style={s.sectionTitle}>同类趋势</Text>
+            <InteractiveLineChart
+              labels={chartEntries.map(([d]) => d.slice(5))}
+              data={chartEntries.map(([, v]) => v)}
               width={W - 48}
-              height={180}
-              chartConfig={{
-                backgroundColor: '#fff',
-                backgroundGradientFrom: '#fff',
-                backgroundGradientTo: '#fff',
-                decimalPlaces: 0,
-                color: () => '#1D9E75',
-                labelColor: () => '#999',
-                propsForDots: { r: '4', strokeWidth: '2', stroke: '#1D9E75' },
-              }}
-              bezier
-              style={{ borderRadius: 8 }}
+              height={210}
+              gradientId="category_grad"
             />
           </View>
         )}
@@ -264,6 +260,7 @@ const s = StyleSheet.create({
   bestLabel: { fontSize: 13, color: '#B8860B', fontWeight: '600', marginBottom: 4 },
   bestVolume: { fontSize: 28, fontWeight: '800', color: '#333', marginBottom: 2 },
   bestDetail: { fontSize: 13, color: '#888' },
+  bestSource: { fontSize: 12, color: '#B8860B', marginTop: 6, fontWeight: '500' },
   statsRow: { flexDirection: 'row', gap: 10, marginBottom: 12 },
   statCard: {
     flex: 1, backgroundColor: '#fff', borderRadius: 12, padding: 14, alignItems: 'center',
