@@ -4,6 +4,7 @@ import {
   StyleSheet, SafeAreaView, Dimensions, Alert,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { Swipeable } from 'react-native-gesture-handler';
 import { loadData, saveData, calcVolume } from '../storage';
 import InteractiveLineChart from '../components/InteractiveLineChart';
 
@@ -163,18 +164,24 @@ export default function CategoryScreen({ route }) {
             <Text style={s.emptyText}>还没有关联器械{'\n'}点右上角「添加」来关联</Text>
           ) : (
             enrichedItems.map((item, idx) => (
-              <View key={idx} style={s.machineRow}>
-                <View style={s.machineInfo}>
-                  <Text style={s.machineName}>{item.machineName}</Text>
-                  <Text style={s.gymName}>{item.gymName} · {item.count} 条记录</Text>
-                  {item.best && (
-                    <Text style={s.machineBest}>最佳 {item.best.volume} kg·次</Text>
-                  )}
+              <Swipeable
+                key={idx}
+                renderRightActions={() => (
+                  <TouchableOpacity style={s.deleteAction} onPress={() => removeItem(item)}>
+                    <Text style={s.deleteActionText}>删除</Text>
+                  </TouchableOpacity>
+                )}
+              >
+                <View style={s.machineRow}>
+                  <View style={s.machineInfo}>
+                    <Text style={s.machineName}>{item.machineName}</Text>
+                    <Text style={s.gymName}>{item.gymName} · {item.count} 条记录</Text>
+                    {item.best && (
+                      <Text style={s.machineBest}>最佳 {item.best.volume} kg·次</Text>
+                    )}
+                  </View>
                 </View>
-                <TouchableOpacity onPress={() => removeItem(item)} style={s.removeBtn}>
-                  <Text style={s.removeBtnText}>移除</Text>
-                </TouchableOpacity>
-              </View>
+              </Swipeable>
             ))
           )}
         </View>
@@ -297,11 +304,11 @@ const s = StyleSheet.create({
   machineName: { fontSize: 15, fontWeight: '600', color: '#222', marginBottom: 2 },
   gymName: { fontSize: 12, color: '#999', marginBottom: 2 },
   machineBest: { fontSize: 13, color: '#1D9E75' },
-  removeBtn: {
-    borderWidth: 1, borderColor: '#FFB3B3', borderRadius: 6,
-    paddingHorizontal: 10, paddingVertical: 4,
+  deleteAction: {
+    backgroundColor: '#FF3B30', justifyContent: 'center', alignItems: 'center',
+    width: 72, borderTopRightRadius: 0, borderBottomRightRadius: 0,
   },
-  removeBtnText: { color: '#FF6B6B', fontSize: 13 },
+  deleteActionText: { color: '#fff', fontSize: 14, fontWeight: '600' },
   emptyText: { color: '#BBB', fontSize: 14, textAlign: 'center', lineHeight: 22, paddingVertical: 20 },
   modalOverlay: {
     flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end',
