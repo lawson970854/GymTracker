@@ -87,6 +87,12 @@ export default function MachineScreen({ route }) {
   const [sets, setSets] = useState([10, 10, 10]);
   const [trophy, setTrophy] = useState(null); // 'gold' | 'silver' | null
 
+  // 编辑状态
+  const [editRec, setEditRec] = useState(null);
+  const [editDate, setEditDate] = useState('');
+  const [editWeight, setEditWeight] = useState('');
+  const [editSets, setEditSets] = useState([]);
+
   useFocusEffect(useCallback(() => {
     loadData().then(d => {
       const recs = d.records
@@ -141,6 +147,66 @@ export default function MachineScreen({ route }) {
       setWeight('');
       setSets([10, 10, 10]);
     }
+  };
+
+  const refreshRecords = (allRecords) => {
+    const myRecs = allRecords
+      .filter(r => r.gymId === gymId && r.machineId === machineId)
+      .sort((a, b) => b.date.localeCompare(a.date));
+    setRecords(myRecs);
+    const newBest = getBestRecord(allRecords, gymId, machineId);
+    if (newBest) {
+      setWeight(String(newBest.weight));
+      setSets([...newBest.sets]);
+    }
+  };
+
+  const openEdit = (rec) => {
+    setEditRec(rec);
+    setEditDate(rec.date);
+    setEditWeight(String(rec.weight));
+    setEditSets([...rec.sets]);
+  };
+
+  const saveEdit = async () => {
+    const w = parseFloat(editWeight);
+    if (!w || w <= 0) return Alert.alert('请输入有效重量');
+    if (editSets.some(r => r <= 0)) return Alert.alert('请输入有效次数');
+    const volume = calcVolume(w, editSets);
+    const data = await loadData();
+    const idx = data.records.findIndex(r => r.id === editRec.id);
+    if (idx !== -1) {
+      data.records[idx] = { ...editRec, date: editDate, weight: w, sets: [...editSets], volume };
+      await saveData(data);
+      refreshRecords(data.records);
+    }
+    setEditRec(null);
+  };
+
+  const deleteRecord = (rec) => {
+    Alert.alert('删除记录', `确认删除 ${rec.date} 的这条训练记录？`, [
+      { text: '取消', style: 'cancel' },
+      {
+        text: '删除', style: 'destructive', onPress: async () => {
+          const data = await loadData();
+          data.records = data.records.filter(r => r.id !== rec.id);
+          await saveData(data);
+          refreshRecords(data.records);
+        },
+      },
+    ]);
+  };
+
+  const showActions = (rec) => {
+    Alert.alert(
+      `${rec.date}`,
+      `${rec.weight}kg × ${rec.sets?.join('/')} 次  |  ${rec.volume} kg·次`,
+      [
+        { text: '编辑', onPress: () => openEdit(rec) },
+        { text: '删除', style: 'destructive', onPress: () => deleteRecord(rec) },
+        { text: '取消', style: 'cancel' },
+      ]
+    );
   };
 
   const chartData = () => {
@@ -235,6 +301,9 @@ export default function MachineScreen({ route }) {
                   {r.weight}kg × {r.sets?.join('/')} 次
                 </Text>
                 <Text style={s.histVol}>{r.volume}</Text>
+                <TouchableOpacity onPress={() => showActions(r)} style={s.moreBtn}>
+                  <Text style={s.moreBtnText}>···</Text>
+                </TouchableOpacity>
               </View>
             ))}
           </View>
@@ -243,6 +312,46 @@ export default function MachineScreen({ route }) {
       </ScrollView>
 
       <TrophyModal visible={!!trophy} type={trophy} onClose={() => setTrophy(null)} />
+
+      {/* 编辑记录 Modal */}
+      <Modal visible={!!editRec} transparent animationType="slide" onRequestClose={() => setEditRec(null)}>
+        <TouchableOpacity style={s.editOverlay} activeOpacity={1} onPress={() => setEditRec(null)}>
+          <View style={s.editSheet} onStartShouldSetResponder={() => true}>
+            <Text style={s.editTitle}>编辑记录</Text>
+
+            <Text style={s.fieldLabel}>日期</Text>
+            <DatePicker value={editDate} onChange={setEditDate} />
+
+            <Text style={[s.fieldLabel, { marginTop: 14 }]}>重量（kg）</Text>
+            <TextInput
+              style={s.weightInput}
+              keyboardType="decimal-pad"
+              value={editWeight}
+              onChangeText={setEditWeight}
+            />
+
+            <View style={{ marginTop: 14 }}>
+              <SetInput sets={editSets} onChange={setEditSets} />
+            </View>
+
+            {editWeight ? (
+              <Text style={s.preview}>
+                训练量：{calcVolume(parseFloat(editWeight) || 0, editSets)} kg·次
+              </Text>
+            ) : null}
+
+            <View style={s.editActions}>
+              <TouchableOpacity style={s.editCancelBtn} onPress={() => setEditRec(null)}>
+                <Text style={s.editCancelText}>取消</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={s.editSaveBtn} onPress={saveEdit}>
+                <Text style={s.editSaveText}>保存</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
     </SafeAreaView>
   );
 }
@@ -289,5 +398,26 @@ const s = StyleSheet.create({
   },
   histDate: { width: 90, fontSize: 13, color: '#999' },
   histDetail: { flex: 1, fontSize: 13, color: '#555' },
-  histVol: { fontSize: 14, fontWeight: '700', color: '#1D9E75' },
+  histVol: { fontSize: 14, fontWeight: '700', color: '#1D9E75', marginRight: 4 },
+  moreBtn: { paddingHorizontal: 8, paddingVertical: 4 },
+  moreBtnText: { fontSize: 16, color: '#BBB', letterSpacing: 1 },
+  editOverlay: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end',
+  },
+  editSheet: {
+    backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20,
+    padding: 20, paddingBottom: 40,
+  },
+  editTitle: { fontSize: 17, fontWeight: '700', color: '#333', marginBottom: 16, textAlign: 'center' },
+  editActions: { flexDirection: 'row', gap: 12, marginTop: 20 },
+  editCancelBtn: {
+    flex: 1, borderWidth: 1, borderColor: '#DDD', borderRadius: 10,
+    paddingVertical: 13, alignItems: 'center',
+  },
+  editCancelText: { fontSize: 15, color: '#999', fontWeight: '600' },
+  editSaveBtn: {
+    flex: 2, backgroundColor: '#1D9E75', borderRadius: 10,
+    paddingVertical: 13, alignItems: 'center',
+  },
+  editSaveText: { fontSize: 15, color: '#fff', fontWeight: '700' },
 });
