@@ -125,15 +125,15 @@ export default function CategoryScreen({ route }) {
           <View style={s.statsRow}>
             <View style={s.statCard}>
               <Text style={s.statNum}>{allRecords.length}</Text>
-              <Text style={s.statLabel}>总记录</Text>
-            </View>
-            <View style={s.statCard}>
-              <Text style={s.statNum}>{totalVolume >= 10000 ? `${(totalVolume / 10000).toFixed(1)}万` : totalVolume.toLocaleString()}</Text>
-              <Text style={s.statLabel}>总训练量</Text>
+              <Text style={s.statLabel}>训练次数</Text>
             </View>
             <View style={s.statCard}>
               <Text style={s.statNum}>{chartEntries.length}</Text>
               <Text style={s.statLabel}>训练天数</Text>
+            </View>
+            <View style={s.statCard}>
+              <Text style={s.statNum}>{totalVolume >= 10000 ? `${(totalVolume / 10000).toFixed(1)}万` : totalVolume.toLocaleString()}</Text>
+              <Text style={s.statLabel}>总训练量</Text>
             </View>
           </View>
         )}
