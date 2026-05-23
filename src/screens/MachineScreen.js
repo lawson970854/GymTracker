@@ -272,7 +272,7 @@ export default function MachineScreen({ route }) {
 
         {hasChart && (
           <View style={s.chartCard}>
-            <Text style={s.sectionTitle}>单向趋势</Text>
+            <Text style={s.sectionTitle}>单项趋势</Text>
             <InteractiveLineChart
               labels={labels}
               data={chartValues}
