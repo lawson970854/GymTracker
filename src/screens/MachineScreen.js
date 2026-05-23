@@ -241,7 +241,7 @@ export default function MachineScreen({ route }) {
         )}
 
         <View style={s.formCard}>
-          <Text style={s.sectionTitle}>记录训练</Text>
+          <Text style={s.sectionTitle}>训练记录</Text>
 
           <Text style={s.fieldLabel}>日期</Text>
           <DatePicker value={date} onChange={setDate} />
