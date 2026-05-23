@@ -77,12 +77,12 @@ export default function ProfileScreen() {
               <Text style={s.statLabel}>器械</Text>
             </View>
             <View style={s.statItem}>
-              <Text style={s.statNum}>{records.length}</Text>
-              <Text style={s.statLabel}>训练记录</Text>
-            </View>
-            <View style={s.statItem}>
               <Text style={s.statNum}>{categories.length}</Text>
               <Text style={s.statLabel}>分类</Text>
+            </View>
+            <View style={s.statItem}>
+              <Text style={s.statNum}>{records.length}</Text>
+              <Text style={s.statLabel}>训练记录</Text>
             </View>
           </View>
         </View>
