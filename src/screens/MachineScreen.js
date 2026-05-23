@@ -4,10 +4,10 @@ import {
   StyleSheet, SafeAreaView, Platform, Dimensions, Alert, Modal,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { LineChart } from 'react-native-chart-kit';
 import { loadData, saveData, uid, calcVolume, getBestRecord, today } from '../storage';
 import SetInput from '../components/SetInput';
 import TrophyModal from '../components/TrophyModal';
+import InteractiveLineChart from '../components/InteractiveLineChart';
 
 const W = Dimensions.get('window').width;
 
@@ -271,22 +271,13 @@ export default function MachineScreen({ route }) {
 
         {hasChart && (
           <View style={s.chartCard}>
-            <Text style={s.sectionTitle}>全部训练量趋势</Text>
-            <LineChart
-              data={{ labels, datasets: [{ data: chartValues }] }}
+            <Text style={s.sectionTitle}>单向趋势</Text>
+            <InteractiveLineChart
+              labels={labels}
+              data={chartValues}
               width={W - 48}
-              height={180}
-              chartConfig={{
-                backgroundColor: '#fff',
-                backgroundGradientFrom: '#fff',
-                backgroundGradientTo: '#fff',
-                decimalPlaces: 0,
-                color: () => '#1D9E75',
-                labelColor: () => '#999',
-                propsForDots: { r: '4', strokeWidth: '2', stroke: '#1D9E75' },
-              }}
-              bezier
-              style={{ borderRadius: 8 }}
+              height={210}
+              gradientId="machine_grad"
             />
           </View>
         )}
