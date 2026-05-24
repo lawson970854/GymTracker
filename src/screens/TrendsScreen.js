@@ -1,23 +1,21 @@
-import React, { useState, useCallback } from 'react';
+import React, { useMemo } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, SafeAreaView, Dimensions,
 } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
 import { LineChart } from 'react-native-chart-kit';
-import { loadData } from '../storage';
+import { useQuery } from '@tanstack/react-query';
+import { fetchGymData } from '../storage';
+import { GYM_DATA_KEY } from '../queryClient';
+import { useTheme } from '../ThemeContext';
 
 const W = Dimensions.get('window').width;
 
 export default function TrendsScreen() {
-  const [gyms, setGyms] = useState([]);
-  const [records, setRecords] = useState([]);
-
-  useFocusEffect(useCallback(() => {
-    loadData().then(d => {
-      setGyms(d.gyms);
-      setRecords(d.records);
-    });
-  }, []));
+  const { theme } = useTheme();
+  const s = useMemo(() => makeStyles(theme), [theme]);
+  const { data } = useQuery({ queryKey: GYM_DATA_KEY, queryFn: fetchGymData });
+  const gyms = data?.gyms || [];
+  const records = data?.records || [];
 
   const dailyVolume = () => {
     const map = {};
@@ -47,25 +45,27 @@ export default function TrendsScreen() {
     <SafeAreaView style={s.safe}>
       <ScrollView style={s.scroll} contentContainerStyle={s.content}>
 
+        <Text style={s.pageTitle}>趋势</Text>
+
         <View style={s.statsRow}>
           <View style={s.statCard}>
-            <Text style={s.statNum}>{totalSessions}</Text>
-            <Text style={s.statLabel}>总记录</Text>
+            <Text style={s.statNum} maxFontSizeMultiplier={1.2}>{totalSessions}</Text>
+            <Text style={s.statLabel} maxFontSizeMultiplier={1.2}>总记录</Text>
           </View>
           <View style={s.statCard}>
-            <Text style={s.statNum}>{totalVolume.toLocaleString()}</Text>
-            <Text style={s.statLabel}>总训练量</Text>
+            <Text style={s.statNum} maxFontSizeMultiplier={1.2}>{totalVolume.toLocaleString()}</Text>
+            <Text style={s.statLabel} maxFontSizeMultiplier={1.2}>总训练量</Text>
           </View>
           <View style={s.statCard}>
-            <Text style={s.statNum}>{entries.length}</Text>
-            <Text style={s.statLabel}>训练天数</Text>
+            <Text style={s.statNum} maxFontSizeMultiplier={1.2}>{entries.length}</Text>
+            <Text style={s.statLabel} maxFontSizeMultiplier={1.2}>训练天数</Text>
           </View>
         </View>
 
         {bestDay.vol > 0 && (
           <View style={s.bestDayCard}>
             <Text style={s.bestDayLabel}>🔥 单日最高训练量</Text>
-            <Text style={s.bestDayVal}>{bestDay.vol.toLocaleString()} kg·次</Text>
+            <Text style={s.bestDayVal}>{bestDay.vol.toLocaleString()} 千克·次</Text>
             <Text style={s.bestDayDate}>{bestDay.date}</Text>
           </View>
         )}
@@ -81,13 +81,13 @@ export default function TrendsScreen() {
               width={W - 48}
               height={200}
               chartConfig={{
-                backgroundColor: '#fff',
-                backgroundGradientFrom: '#fff',
-                backgroundGradientTo: '#fff',
+                backgroundColor: theme.card,
+                backgroundGradientFrom: theme.card,
+                backgroundGradientTo: theme.card,
                 decimalPlaces: 0,
-                color: () => '#1D9E75',
-                labelColor: () => '#999',
-                propsForDots: { r: '5', strokeWidth: '2', stroke: '#1D9E75' },
+                color: () => theme.accent,
+                labelColor: () => theme.textMuted,
+                propsForDots: { r: '5', strokeWidth: '2', stroke: theme.accent },
               }}
               bezier
               style={{ borderRadius: 8 }}
@@ -125,49 +125,50 @@ export default function TrendsScreen() {
   );
 }
 
-const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#F7F7F7' },
+const makeStyles = (t) => StyleSheet.create({
+  safe: { flex: 1, backgroundColor: t.bg },
   scroll: { flex: 1 },
   content: { padding: 16, paddingBottom: 40 },
+  pageTitle: { fontSize: 28, fontWeight: '800', color: t.textPrimary, marginBottom: 16 },
   statsRow: { flexDirection: 'row', gap: 10, marginBottom: 12 },
   statCard: {
-    flex: 1, backgroundColor: '#fff', borderRadius: 12, padding: 14,
+    flex: 1, backgroundColor: t.card, borderRadius: 12, padding: 14,
     alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 1,
   },
-  statNum: { fontSize: 22, fontWeight: '800', color: '#1D9E75', marginBottom: 2 },
-  statLabel: { fontSize: 12, color: '#999' },
+  statNum: { fontSize: 22, fontWeight: '800', color: t.accent, marginBottom: 2 },
+  statLabel: { fontSize: 12, color: t.textMuted },
   bestDayCard: {
-    backgroundColor: '#FFF3E0', borderRadius: 12, padding: 16,
-    marginBottom: 12, alignItems: 'center', borderWidth: 1, borderColor: '#FFB74D',
+    backgroundColor: t.orangeBg, borderRadius: 12, padding: 16,
+    marginBottom: 12, alignItems: 'center', borderWidth: 1, borderColor: t.orangeBorder,
   },
-  bestDayLabel: { fontSize: 13, color: '#E65100', fontWeight: '600', marginBottom: 4 },
-  bestDayVal: { fontSize: 26, fontWeight: '800', color: '#333', marginBottom: 2 },
-  bestDayDate: { fontSize: 13, color: '#999' },
+  bestDayLabel: { fontSize: 13, color: t.orangeLabel, fontWeight: '600', marginBottom: 4 },
+  bestDayVal: { fontSize: 26, fontWeight: '800', color: t.textPrimary, marginBottom: 2 },
+  bestDayDate: { fontSize: 13, color: t.textMuted },
   chartCard: {
-    backgroundColor: '#fff', borderRadius: 12, padding: 16,
+    backgroundColor: t.card, borderRadius: 12, padding: 16,
     marginBottom: 12, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 1,
   },
   noDataCard: {
-    backgroundColor: '#fff', borderRadius: 12, padding: 24,
+    backgroundColor: t.card, borderRadius: 12, padding: 24,
     alignItems: 'center', marginBottom: 12,
   },
-  noDataText: { color: '#BBB', fontSize: 14, textAlign: 'center', lineHeight: 22 },
+  noDataText: { color: t.textFaint, fontSize: 14, textAlign: 'center', lineHeight: 22 },
   gymSection: {
-    backgroundColor: '#fff', borderRadius: 12, padding: 16,
+    backgroundColor: t.card, borderRadius: 12, padding: 16,
     shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 1,
   },
-  sectionTitle: { fontSize: 15, fontWeight: '700', color: '#333', marginBottom: 14 },
+  sectionTitle: { fontSize: 15, fontWeight: '700', color: t.textPrimary, marginBottom: 14 },
   gymCard: {
     flexDirection: 'row', alignItems: 'center',
-    paddingVertical: 10, borderBottomWidth: 1, borderColor: '#F0F0F0',
+    paddingVertical: 10, borderBottomWidth: 1, borderColor: t.border,
   },
   gymInfo: { flex: 1 },
-  gymName: { fontSize: 15, fontWeight: '600', color: '#222', marginBottom: 2 },
-  gymSub: { fontSize: 12, color: '#999' },
-  gymVol: { fontSize: 16, fontWeight: '700', color: '#1D9E75' },
+  gymName: { fontSize: 15, fontWeight: '600', color: t.textPrimary, marginBottom: 2 },
+  gymSub: { fontSize: 12, color: t.textMuted },
+  gymVol: { fontSize: 16, fontWeight: '700', color: t.accent },
   emptyCard: {
-    backgroundColor: '#fff', borderRadius: 12, padding: 40, alignItems: 'center',
+    backgroundColor: t.card, borderRadius: 12, padding: 40, alignItems: 'center',
     shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 1,
   },
-  emptyText: { color: '#BBB', fontSize: 15, textAlign: 'center', lineHeight: 24 },
+  emptyText: { color: t.textFaint, fontSize: 15, textAlign: 'center', lineHeight: 24 },
 });

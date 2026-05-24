@@ -1,7 +1,10 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useMemo } from 'react';
 import { Modal, View, Text, Animated, TouchableOpacity, StyleSheet } from 'react-native';
+import { useTheme } from '../ThemeContext';
 
 export default function TrophyModal({ visible, type, onClose }) {
+  const { theme } = useTheme();
+  const s = useMemo(() => makeStyles(theme), [theme]);
   const scale = useRef(new Animated.Value(0)).current;
   const bounce = useRef(new Animated.Value(0)).current;
 
@@ -34,9 +37,15 @@ export default function TrophyModal({ visible, type, onClose }) {
 
   return (
     <Modal transparent visible={visible} animationType="fade" onRequestClose={onClose}>
-      <TouchableOpacity style={s.overlay} onPress={onClose} activeOpacity={1}>
+      <TouchableOpacity
+        style={s.overlay}
+        onPress={onClose}
+        activeOpacity={1}
+        accessibilityLabel={isGold ? '历史最高记录，点击关闭' : '今日最佳，点击关闭'}
+        accessibilityRole="button"
+      >
         <Animated.View style={[s.card, { transform: [{ scale }, { translateY: bounce }] }]}>
-          <Text style={s.emoji}>{isGold ? '🏆' : '🥈'}</Text>
+          <Text style={s.emoji} accessible={false}>{isGold ? '🏆' : '🥈'}</Text>
           <Text style={s.title}>{isGold ? '历史最高记录！' : '今日最佳！'}</Text>
           <Text style={s.sub}>{isGold ? '突破个人记录，太厉害了！' : '超越今日之前成绩！'}</Text>
         </Animated.View>
@@ -45,7 +54,7 @@ export default function TrophyModal({ visible, type, onClose }) {
   );
 }
 
-const s = StyleSheet.create({
+const makeStyles = (t) => StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.45)',
@@ -53,7 +62,7 @@ const s = StyleSheet.create({
     alignItems: 'center',
   },
   card: {
-    backgroundColor: '#fff',
+    backgroundColor: t.card,
     borderRadius: 20,
     padding: 36,
     alignItems: 'center',
@@ -64,6 +73,6 @@ const s = StyleSheet.create({
     minWidth: 240,
   },
   emoji: { fontSize: 72, marginBottom: 12 },
-  title: { fontSize: 22, fontWeight: '700', color: '#333', marginBottom: 6 },
-  sub: { fontSize: 15, color: '#888', textAlign: 'center' },
+  title: { fontSize: 22, fontWeight: '700', color: t.textPrimary, marginBottom: 6 },
+  sub: { fontSize: 15, color: t.textMuted, textAlign: 'center' },
 });

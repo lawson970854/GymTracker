@@ -1,42 +1,79 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity,
   TextInput, Alert, StyleSheet, SafeAreaView,
 } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
 import { Swipeable } from 'react-native-gesture-handler';
-import { loadData, saveData, uid } from '../storage';
+import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { fetchGymData, addCategory as dbAddCategory, deleteCategory as dbDeleteCategory } from '../storage';
+import { GYM_DATA_KEY } from '../queryClient';
+import { useTheme } from '../ThemeContext';
 
 export default function CategoryListScreen({ navigation }) {
-  const [categories, setCategories] = useState([]);
+  const { theme } = useTheme();
+  const s = useMemo(() => makeStyles(theme), [theme]);
+  const qc = useQueryClient();
+  const { data } = useQuery({ queryKey: GYM_DATA_KEY, queryFn: fetchGymData });
+  const categories = data?.categories || [];
+
   const [newName, setNewName] = useState('');
   const [adding, setAdding] = useState(false);
 
-  useFocusEffect(useCallback(() => {
-    loadData().then(d => setCategories(d.categories || []));
-  }, []));
+  const addMutation = useMutation({
+    mutationFn: dbAddCategory,
+    onMutate: async (name) => {
+      await qc.cancelQueries({ queryKey: GYM_DATA_KEY });
+      const prev = qc.getQueryData(GYM_DATA_KEY);
+      qc.setQueryData(GYM_DATA_KEY, old => ({
+        ...old,
+        categories: [...(old?.categories || []), { id: 'temp_' + Date.now(), name, items: [] }],
+      }));
+      return { prev };
+    },
+    onError: (err, vars, ctx) => {
+      if (ctx?.prev) qc.setQueryData(GYM_DATA_KEY, ctx.prev);
+      Alert.alert('添加失败', '请检查网络连接');
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: GYM_DATA_KEY }),
+  });
 
-  const addCategory = async () => {
+  const deleteMutation = useMutation({
+    mutationFn: dbDeleteCategory,
+    onMutate: async (catId) => {
+      await qc.cancelQueries({ queryKey: GYM_DATA_KEY });
+      const prev = qc.getQueryData(GYM_DATA_KEY);
+      qc.setQueryData(GYM_DATA_KEY, old => ({
+        ...old,
+        categories: (old?.categories || []).filter(c => c.id !== catId),
+      }));
+      return { prev };
+    },
+    onError: (err, vars, ctx) => {
+      if (ctx?.prev) qc.setQueryData(GYM_DATA_KEY, ctx.prev);
+      Alert.alert('删除失败', '请检查网络连接');
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: GYM_DATA_KEY }),
+  });
+
+  const addCategory = () => {
     const name = newName.trim();
     if (!name) return;
-    const data = await loadData();
-    data.categories = data.categories || [];
-    data.categories.push({ id: uid(), name, items: [] });
-    await saveData(data);
-    setCategories(data.categories);
     setNewName('');
     setAdding(false);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    addMutation.mutate(name);
   };
 
   const deleteCategory = (cat) => {
     Alert.alert('删除分类', `确认删除分类「${cat.name}」？（不会删除器械和记录）`, [
       { text: '取消', style: 'cancel' },
       {
-        text: '删除', style: 'destructive', onPress: async () => {
-          const data = await loadData();
-          data.categories = data.categories.filter(c => c.id !== cat.id);
-          await saveData(data);
-          setCategories(data.categories);
+        text: '删除', style: 'destructive',
+        onPress: () => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          deleteMutation.mutate(cat.id);
         },
       },
     ]);
@@ -52,7 +89,12 @@ export default function CategoryListScreen({ navigation }) {
           renderItem={({ item }) => (
             <Swipeable
               renderRightActions={() => (
-                <TouchableOpacity style={s.deleteAction} onPress={() => deleteCategory(item)}>
+                <TouchableOpacity
+                  style={s.deleteAction}
+                  onPress={() => deleteCategory(item)}
+                  accessibilityLabel={`删除${item.name}`}
+                  accessibilityRole="button"
+                >
                   <Text style={s.deleteActionText}>删除</Text>
                 </TouchableOpacity>
               )}
@@ -60,12 +102,15 @@ export default function CategoryListScreen({ navigation }) {
               <TouchableOpacity
                 style={s.card}
                 onPress={() => navigation.navigate('Category', { categoryId: item.id, categoryName: item.name })}
+                accessibilityRole="button"
+                accessibilityLabel={item.name}
+                accessibilityHint="进入分类详情"
               >
-                <View>
+                <View style={{ flex: 1 }}>
                   <Text style={s.catName}>{item.name}</Text>
                   <Text style={s.catSub}>{item.items?.length || 0} 个器械</Text>
                 </View>
-                <Text style={s.chevron}>›</Text>
+                <Ionicons name="chevron-forward" size={18} color={theme.textFaint} />
               </TouchableOpacity>
             </Swipeable>
           )}
@@ -73,28 +118,38 @@ export default function CategoryListScreen({ navigation }) {
             <Text style={s.empty}>还没有分类{'\n'}点下方按钮新建</Text>
           }
         />
-
         {adding ? (
           <View style={s.addRow}>
             <TextInput
               style={s.addInput}
               placeholder="分类名称，如：胸推"
+              placeholderTextColor={theme.textFaint}
               value={newName}
               onChangeText={setNewName}
               autoFocus
+              autoCorrect={false}
               returnKeyType="done"
               onSubmitEditing={addCategory}
+              accessibilityLabel="分类名称"
             />
-            <TouchableOpacity style={s.confirmBtn} onPress={addCategory}>
+            <TouchableOpacity style={s.confirmBtn} onPress={addCategory} accessibilityRole="button">
               <Text style={s.confirmText}>确认</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => { setAdding(false); setNewName(''); }}>
+            <TouchableOpacity style={s.cancelBtn} onPress={() => { setAdding(false); setNewName(''); }} accessibilityRole="button" accessibilityLabel="取消">
               <Text style={s.cancelText}>取消</Text>
             </TouchableOpacity>
           </View>
         ) : (
-          <TouchableOpacity style={s.addBtn} onPress={() => setAdding(true)}>
-            <Text style={s.addBtnText}>＋ 新建分类</Text>
+          <TouchableOpacity
+            style={s.addBtn}
+            onPress={() => setAdding(true)}
+            accessibilityRole="button"
+            accessibilityLabel="新建分类"
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Ionicons name="add" size={20} color="#fff" accessible={false} />
+              <Text style={s.addBtnText}>新建分类</Text>
+            </View>
           </TouchableOpacity>
         )}
       </View>
@@ -102,38 +157,39 @@ export default function CategoryListScreen({ navigation }) {
   );
 }
 
-const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#F7F7F7' },
+const makeStyles = (t) => StyleSheet.create({
+  safe: { flex: 1, backgroundColor: t.bg },
   container: { flex: 1, padding: 16 },
   deleteAction: {
     backgroundColor: '#FF3B30', justifyContent: 'center', alignItems: 'center',
-    width: 72, marginBottom: 10, borderRadius: 12,
+    width: 72, marginBottom: 10,
+    borderTopRightRadius: 12, borderBottomRightRadius: 12,
   },
   deleteActionText: { color: '#fff', fontSize: 14, fontWeight: '600' },
   card: {
-    backgroundColor: '#fff', borderRadius: 12, padding: 16,
+    backgroundColor: t.card, borderRadius: 12, padding: 16,
     marginBottom: 10, flexDirection: 'row', alignItems: 'center',
     shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 1,
   },
-  catName: { fontSize: 17, fontWeight: '600', color: '#222', marginBottom: 3 },
-  catSub: { fontSize: 13, color: '#1D9E75' },
-  chevron: { fontSize: 22, color: '#CCC', marginLeft: 'auto' },
+  catName: { fontSize: 17, fontWeight: '600', color: t.textPrimary, marginBottom: 3 },
+  catSub: { fontSize: 13, color: t.accent },
   emptyContainer: { flex: 1, justifyContent: 'center' },
-  empty: { textAlign: 'center', color: '#BBB', fontSize: 15, lineHeight: 24, marginTop: 60 },
+  empty: { textAlign: 'center', color: t.textFaint, fontSize: 15, lineHeight: 24, marginTop: 60 },
   addRow: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: '#fff', borderRadius: 12, padding: 12,
+    backgroundColor: t.card, borderRadius: 12, padding: 12,
     shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 6, elevation: 2,
   },
-  addInput: { flex: 1, fontSize: 16, paddingVertical: 4 },
+  addInput: { flex: 1, fontSize: 16, paddingVertical: 4, color: t.textPrimary },
   confirmBtn: {
-    backgroundColor: '#1D9E75', borderRadius: 8,
-    paddingHorizontal: 14, paddingVertical: 8,
+    backgroundColor: t.accent, borderRadius: 8,
+    paddingHorizontal: 14, minHeight: 44, justifyContent: 'center',
   },
   confirmText: { color: '#fff', fontWeight: '600', fontSize: 14 },
-  cancelText: { color: '#999', fontSize: 14 },
+  cancelBtn: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 8 },
+  cancelText: { color: t.textMuted, fontSize: 14 },
   addBtn: {
-    backgroundColor: '#1D9E75', borderRadius: 12,
+    backgroundColor: t.accent, borderRadius: 12,
     paddingVertical: 15, alignItems: 'center', marginTop: 4,
   },
   addBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },

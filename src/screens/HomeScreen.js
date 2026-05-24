@@ -1,42 +1,81 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity,
-  TextInput, Alert, StyleSheet, SafeAreaView,
+  TextInput, Alert, StyleSheet, SafeAreaView, KeyboardAvoidingView, Platform,
 } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
+import { useHeaderHeight } from '@react-navigation/elements';
 import { Swipeable } from 'react-native-gesture-handler';
-import { loadData, saveData, uid } from '../storage';
+import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { fetchGymData, addGym as dbAddGym, deleteGym as dbDeleteGym } from '../storage';
+import { GYM_DATA_KEY } from '../queryClient';
+import { useTheme } from '../ThemeContext';
 
 export default function HomeScreen({ navigation }) {
-  const [gyms, setGyms] = useState([]);
+  const headerHeight = useHeaderHeight();
+  const { theme } = useTheme();
+  const s = useMemo(() => makeStyles(theme), [theme]);
+  const qc = useQueryClient();
+  const { data } = useQuery({ queryKey: GYM_DATA_KEY, queryFn: fetchGymData });
+  const gyms = data?.gyms || [];
+
   const [newName, setNewName] = useState('');
   const [adding, setAdding] = useState(false);
 
-  useFocusEffect(useCallback(() => {
-    loadData().then(d => setGyms(d.gyms));
-  }, []));
+  const addMutation = useMutation({
+    mutationFn: dbAddGym,
+    onMutate: async (name) => {
+      await qc.cancelQueries({ queryKey: GYM_DATA_KEY });
+      const prev = qc.getQueryData(GYM_DATA_KEY);
+      qc.setQueryData(GYM_DATA_KEY, old => ({
+        ...old,
+        gyms: [...(old?.gyms || []), { id: 'temp_' + Date.now(), name, machines: [] }],
+      }));
+      return { prev };
+    },
+    onError: (err, vars, ctx) => {
+      if (ctx?.prev) qc.setQueryData(GYM_DATA_KEY, ctx.prev);
+      Alert.alert('添加失败', '请检查网络连接');
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: GYM_DATA_KEY }),
+  });
 
-  const addGym = async () => {
+  const deleteMutation = useMutation({
+    mutationFn: dbDeleteGym,
+    onMutate: async (gymId) => {
+      await qc.cancelQueries({ queryKey: GYM_DATA_KEY });
+      const prev = qc.getQueryData(GYM_DATA_KEY);
+      qc.setQueryData(GYM_DATA_KEY, old => ({
+        ...old,
+        gyms: (old?.gyms || []).filter(g => g.id !== gymId),
+      }));
+      return { prev };
+    },
+    onError: (err, vars, ctx) => {
+      if (ctx?.prev) qc.setQueryData(GYM_DATA_KEY, ctx.prev);
+      Alert.alert('删除失败', '请检查网络连接');
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: GYM_DATA_KEY }),
+  });
+
+  const addGym = () => {
     const name = newName.trim();
     if (!name) return;
-    const data = await loadData();
-    data.gyms.push({ id: uid(), name });
-    await saveData(data);
-    setGyms(data.gyms);
     setNewName('');
     setAdding(false);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    addMutation.mutate(name);
   };
 
   const deleteGym = (gym) => {
     Alert.alert('删除健身房', `确认删除「${gym.name}」及其所有记录？`, [
       { text: '取消', style: 'cancel' },
       {
-        text: '删除', style: 'destructive', onPress: async () => {
-          const data = await loadData();
-          data.gyms = data.gyms.filter(g => g.id !== gym.id);
-          data.records = data.records.filter(r => r.gymId !== gym.id);
-          await saveData(data);
-          setGyms(data.gyms);
+        text: '删除', style: 'destructive',
+        onPress: () => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          deleteMutation.mutate(gym.id);
         },
       },
     ]);
@@ -44,95 +83,115 @@ export default function HomeScreen({ navigation }) {
 
   return (
     <SafeAreaView style={s.safe}>
-      <View style={s.container}>
-        <Text style={s.sectionTitle}>我的健身房</Text>
-
-        <FlatList
-          data={gyms}
-          keyExtractor={g => g.id}
-          contentContainerStyle={gyms.length === 0 && s.emptyContainer}
-          renderItem={({ item }) => (
-            <Swipeable
-              renderRightActions={() => (
-                <TouchableOpacity style={s.deleteAction} onPress={() => deleteGym(item)}>
-                  <Text style={s.deleteActionText}>删除</Text>
-                </TouchableOpacity>
-              )}
-            >
-              <TouchableOpacity
-                style={s.gymCard}
-                onPress={() => navigation.navigate('Gym', { gymId: item.id, gymName: item.name })}
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={headerHeight}>
+        <View style={s.container}>
+          <Text style={s.sectionTitle}>我的健身房</Text>
+          <FlatList
+            data={gyms}
+            keyExtractor={g => g.id}
+            contentContainerStyle={gyms.length === 0 && s.emptyContainer}
+            renderItem={({ item }) => (
+              <Swipeable
+                renderRightActions={() => (
+                  <TouchableOpacity
+                    style={s.deleteAction}
+                    onPress={() => deleteGym(item)}
+                    accessibilityLabel={`删除${item.name}`}
+                    accessibilityRole="button"
+                  >
+                    <Text style={s.deleteActionText}>删除</Text>
+                  </TouchableOpacity>
+                )}
               >
-                <Text style={s.gymName}>{item.name}</Text>
-                <Text style={s.chevron}>›</Text>
+                <TouchableOpacity
+                  style={s.gymCard}
+                  onPress={() => navigation.navigate('Gym', { gymId: item.id, gymName: item.name })}
+                  accessibilityRole="button"
+                  accessibilityLabel={item.name}
+                  accessibilityHint="进入健身房详情"
+                >
+                  <Text style={s.gymName}>{item.name}</Text>
+                  <Ionicons name="chevron-forward" size={18} color={theme.textFaint} />
+                </TouchableOpacity>
+              </Swipeable>
+            )}
+            ListEmptyComponent={
+              <Text style={s.empty}>还没有健身房{'\n'}点下方按钮添加一个</Text>
+            }
+          />
+          {adding ? (
+            <View style={s.addRow}>
+              <TextInput
+                style={s.addInput}
+                placeholder="健身房名称"
+                placeholderTextColor={theme.textFaint}
+                value={newName}
+                onChangeText={setNewName}
+                autoFocus
+                autoCorrect={false}
+                returnKeyType="done"
+                onSubmitEditing={addGym}
+                accessibilityLabel="健身房名称"
+              />
+              <TouchableOpacity style={s.confirmBtn} onPress={addGym} accessibilityRole="button">
+                <Text style={s.confirmText}>确认</Text>
               </TouchableOpacity>
-            </Swipeable>
+              <TouchableOpacity style={s.cancelBtn} onPress={() => { setAdding(false); setNewName(''); }} accessibilityRole="button" accessibilityLabel="取消">
+                <Text style={s.cancelText}>取消</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <TouchableOpacity
+              style={s.addBtn}
+              onPress={() => setAdding(true)}
+              accessibilityRole="button"
+              accessibilityLabel="添加健身房"
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Ionicons name="add" size={20} color="#fff" accessible={false} />
+              <Text style={s.addBtnText}>添加健身房</Text>
+            </View>
+            </TouchableOpacity>
           )}
-          ListEmptyComponent={
-            <Text style={s.empty}>还没有健身房{'\n'}点下方按钮添加一个</Text>
-          }
-        />
-
-        {adding ? (
-          <View style={s.addRow}>
-            <TextInput
-              style={s.addInput}
-              placeholder="健身房名称"
-              value={newName}
-              onChangeText={setNewName}
-              autoFocus
-              returnKeyType="done"
-              onSubmitEditing={addGym}
-            />
-            <TouchableOpacity style={s.confirmBtn} onPress={addGym}>
-              <Text style={s.confirmText}>确认</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => { setAdding(false); setNewName(''); }}>
-              <Text style={s.cancelText}>取消</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <TouchableOpacity style={s.addBtn} onPress={() => setAdding(true)}>
-            <Text style={s.addBtnText}>＋ 添加健身房</Text>
-          </TouchableOpacity>
-        )}
-      </View>
+        </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
-const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#F7F7F7' },
+const makeStyles = (t) => StyleSheet.create({
+  safe: { flex: 1, backgroundColor: t.bg },
   container: { flex: 1, padding: 16 },
-  sectionTitle: { fontSize: 13, fontWeight: '600', color: '#999', marginBottom: 10, letterSpacing: 0.5 },
+  sectionTitle: { fontSize: 13, fontWeight: '600', color: t.textMuted, marginBottom: 10, letterSpacing: 0.5 },
   deleteAction: {
     backgroundColor: '#FF3B30', justifyContent: 'center', alignItems: 'center',
-    width: 72, marginBottom: 10, borderRadius: 12,
+    width: 72, marginBottom: 10,
+    borderTopRightRadius: 12, borderBottomRightRadius: 12,
   },
   deleteActionText: { color: '#fff', fontSize: 14, fontWeight: '600' },
   gymCard: {
-    backgroundColor: '#fff', borderRadius: 12, padding: 16,
+    backgroundColor: t.card, borderRadius: 12, padding: 16,
     marginBottom: 10, flexDirection: 'row', alignItems: 'center',
     shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 1,
   },
-  gymName: { flex: 1, fontSize: 17, fontWeight: '500', color: '#222' },
-  chevron: { fontSize: 22, color: '#CCC' },
+  gymName: { flex: 1, fontSize: 17, fontWeight: '500', color: t.textPrimary },
   emptyContainer: { flex: 1, justifyContent: 'center' },
-  empty: { textAlign: 'center', color: '#BBB', fontSize: 15, lineHeight: 24, marginTop: 60 },
+  empty: { textAlign: 'center', color: t.textFaint, fontSize: 15, lineHeight: 24, marginTop: 60 },
   addRow: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: '#fff', borderRadius: 12, padding: 12,
+    backgroundColor: t.card, borderRadius: 12, padding: 12,
     shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 6, elevation: 2,
   },
-  addInput: { flex: 1, fontSize: 16, paddingVertical: 4 },
+  addInput: { flex: 1, fontSize: 16, paddingVertical: 4, color: t.textPrimary },
   confirmBtn: {
-    backgroundColor: '#1D9E75', borderRadius: 8,
-    paddingHorizontal: 14, paddingVertical: 8,
+    backgroundColor: t.accent, borderRadius: 8,
+    paddingHorizontal: 14, minHeight: 44, justifyContent: 'center',
   },
   confirmText: { color: '#fff', fontWeight: '600', fontSize: 14 },
-  cancelText: { color: '#999', fontSize: 14 },
+  cancelBtn: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 8 },
+  cancelText: { color: t.textMuted, fontSize: 14 },
   addBtn: {
-    backgroundColor: '#1D9E75', borderRadius: 12,
+    backgroundColor: t.accent, borderRadius: 12,
     paddingVertical: 15, alignItems: 'center', marginTop: 4,
   },
   addBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },

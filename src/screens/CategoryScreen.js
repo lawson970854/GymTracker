@@ -1,44 +1,91 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, Modal, FlatList,
   StyleSheet, SafeAreaView, Dimensions, Alert,
 } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { Swipeable } from 'react-native-gesture-handler';
-import { loadData, saveData, calcVolume } from '../storage';
+import * as Haptics from 'expo-haptics';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { fetchGymData, addCategoryItem, removeCategoryItem } from '../storage';
+import { GYM_DATA_KEY } from '../queryClient';
 import InteractiveLineChart from '../components/InteractiveLineChart';
+import { useTheme } from '../ThemeContext';
 
 const W = Dimensions.get('window').width;
 
 export default function CategoryScreen({ route }) {
-  const { categoryId, categoryName } = route.params;
+  const { categoryId } = route.params;
+  const { theme } = useTheme();
+  const s = useMemo(() => makeStyles(theme), [theme]);
+  const insets = useSafeAreaInsets();
+  const qc = useQueryClient();
+  const { data: gymData } = useQuery({ queryKey: GYM_DATA_KEY, queryFn: fetchGymData });
 
-  const [data, setData] = useState({ gyms: [], records: [], categories: [] });
-  const [category, setCategory] = useState(null);
+  const gyms = gymData?.gyms || [];
+  const records = gymData?.records || [];
+  const category = gymData?.categories?.find(c => c.id === categoryId) || null;
+
   const [addModalVisible, setAddModalVisible] = useState(false);
-  const [pickerStep, setPickerStep] = useState('gym'); // 'gym' | 'machine'
+  const [pickerStep, setPickerStep] = useState('gym');
   const [pickerGym, setPickerGym] = useState(null);
 
-  useFocusEffect(useCallback(() => {
-    loadData().then(d => {
-      setData(d);
-      setCategory(d.categories.find(c => c.id === categoryId) || null);
-    });
-  }, [categoryId]));
+  const removeMutation = useMutation({
+    mutationFn: ({ gymId, machineId }) => removeCategoryItem(categoryId, gymId, machineId),
+    onMutate: async ({ gymId, machineId }) => {
+      await qc.cancelQueries({ queryKey: GYM_DATA_KEY });
+      const prev = qc.getQueryData(GYM_DATA_KEY);
+      qc.setQueryData(GYM_DATA_KEY, old => ({
+        ...old,
+        categories: (old?.categories || []).map(c =>
+          c.id === categoryId
+            ? { ...c, items: c.items.filter(i => !(i.gymId === gymId && i.machineId === machineId)) }
+            : c
+        ),
+      }));
+      return { prev };
+    },
+    onError: (err, vars, ctx) => {
+      if (ctx?.prev) qc.setQueryData(GYM_DATA_KEY, ctx.prev);
+      Alert.alert('移除失败', '请检查网络连接');
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: GYM_DATA_KEY }),
+  });
+
+  const addMutation = useMutation({
+    mutationFn: ({ gymId, machineId }) => addCategoryItem(categoryId, gymId, machineId),
+    onMutate: async ({ gymId, machineId }) => {
+      await qc.cancelQueries({ queryKey: GYM_DATA_KEY });
+      const prev = qc.getQueryData(GYM_DATA_KEY);
+      qc.setQueryData(GYM_DATA_KEY, old => ({
+        ...old,
+        categories: (old?.categories || []).map(c =>
+          c.id === categoryId
+            ? { ...c, items: [...c.items, { gymId, machineId }] }
+            : c
+        ),
+      }));
+      return { prev };
+    },
+    onError: (err, vars, ctx) => {
+      if (ctx?.prev) qc.setQueryData(GYM_DATA_KEY, ctx.prev);
+      Alert.alert('添加失败', '请检查网络连接');
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: GYM_DATA_KEY }),
+  });
 
   const items = category?.items || [];
 
-  // 找到每个 item 对应的 gym 名和 machine 名
   const enrichedItems = items.map(item => {
-    const gym = data.gyms.find(g => g.id === item.gymId);
+    const gym = gyms.find(g => g.id === item.gymId);
     const machine = gym?.machines?.find(m => m.id === item.machineId);
-    const recs = data.records.filter(r => r.gymId === item.gymId && r.machineId === item.machineId);
+    const recs = records.filter(r => r.gymId === item.gymId && r.machineId === item.machineId);
     const best = recs.length ? recs.reduce((b, r) => r.volume > b.volume ? r : b, recs[0]) : null;
     return { ...item, gymName: gym?.name || '?', machineName: machine?.name || '?', best, count: recs.length };
   });
 
-  // 合并所有记录，按日期取最大训练量
-  const allRecords = data.records.filter(r =>
+  const allRecords = records.filter(r =>
     items.some(item => item.gymId === r.gymId && item.machineId === r.machineId)
   );
 
@@ -66,41 +113,22 @@ export default function CategoryScreen({ route }) {
     Alert.alert('移除器械', `从分类中移除「${item.machineName}」？（记录不会删除）`, [
       { text: '取消', style: 'cancel' },
       {
-        text: '移除', style: 'destructive', onPress: async () => {
-          const d = await loadData();
-          const cat = d.categories.find(c => c.id === categoryId);
-          if (cat) {
-            cat.items = cat.items.filter(i => !(i.gymId === item.gymId && i.machineId === item.machineId));
-            await saveData(d);
-            setData(d);
-            setCategory({ ...cat });
-          }
+        text: '移除', style: 'destructive',
+        onPress: () => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          removeMutation.mutate({ gymId: item.gymId, machineId: item.machineId });
         },
       },
     ]);
   };
 
-  const addItem = async (gymId, machineId) => {
-    const d = await loadData();
-    const cat = d.categories.find(c => c.id === categoryId);
-    if (!cat) return;
-    const already = cat.items.some(i => i.gymId === gymId && i.machineId === machineId);
+  const addItem = (gymId, machineId) => {
+    const already = items.some(i => i.gymId === gymId && i.machineId === machineId);
     if (already) { setAddModalVisible(false); return; }
-    cat.items.push({ gymId, machineId });
-    await saveData(d);
-    setData(d);
-    setCategory({ ...cat });
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    addMutation.mutate({ gymId, machineId });
     setAddModalVisible(false);
   };
-
-  // 所有可以添加的器械（排除已在分类中的）
-  const availableMachines = [];
-  data.gyms.forEach(gym => {
-    (gym.machines || []).forEach(machine => {
-      const inCategory = items.some(i => i.gymId === gym.id && i.machineId === machine.id);
-      availableMachines.push({ gym, machine, inCategory });
-    });
-  });
 
   return (
     <SafeAreaView style={s.safe}>
@@ -109,7 +137,7 @@ export default function CategoryScreen({ route }) {
         {overallBest && (
           <View style={s.bestCard}>
             <Text style={s.bestLabel}>🏆 同类历史最佳</Text>
-            <Text style={s.bestVolume}>{overallBest.volume} kg·次</Text>
+            <Text style={s.bestVolume}>{overallBest.volume} 千克·次</Text>
             <Text style={s.bestDetail}>
               {overallBest.weight}kg × {overallBest.sets?.length || 0}组（{overallBest.sets?.join('/') || '-'} 次）· {overallBest.date}
             </Text>
@@ -124,16 +152,16 @@ export default function CategoryScreen({ route }) {
         {allRecords.length > 0 && (
           <View style={s.statsRow}>
             <View style={s.statCard}>
-              <Text style={s.statNum}>{allRecords.length}</Text>
-              <Text style={s.statLabel}>训练记录</Text>
+              <Text style={s.statNum} maxFontSizeMultiplier={1.2}>{allRecords.length}</Text>
+              <Text style={s.statLabel} maxFontSizeMultiplier={1.2}>训练记录</Text>
             </View>
             <View style={s.statCard}>
-              <Text style={s.statNum}>{chartEntries.length}</Text>
-              <Text style={s.statLabel}>训练天数</Text>
+              <Text style={s.statNum} maxFontSizeMultiplier={1.2}>{chartEntries.length}</Text>
+              <Text style={s.statLabel} maxFontSizeMultiplier={1.2}>训练天数</Text>
             </View>
             <View style={s.statCard}>
-              <Text style={s.statNum}>{totalVolume >= 10000 ? `${(totalVolume / 10000).toFixed(1)}万` : totalVolume.toLocaleString()}</Text>
-              <Text style={s.statLabel}>总训练量</Text>
+              <Text style={s.statNum} maxFontSizeMultiplier={1.2}>{totalVolume.toLocaleString()}</Text>
+              <Text style={s.statLabel} maxFontSizeMultiplier={1.2}>总训练量</Text>
             </View>
           </View>
         )}
@@ -155,7 +183,7 @@ export default function CategoryScreen({ route }) {
         <View style={s.machinesCard}>
           <View style={s.machinesHeader}>
             <Text style={s.sectionTitle}>关联器械</Text>
-            <TouchableOpacity style={s.addMachineBtn} onPress={() => { setPickerStep('gym'); setPickerGym(null); setAddModalVisible(true); }}>
+            <TouchableOpacity style={s.addMachineBtn} onPress={() => { setPickerStep('gym'); setPickerGym(null); setAddModalVisible(true); }} accessibilityRole="button" accessibilityLabel="添加关联器械">
               <Text style={s.addMachineBtnText}>＋ 添加</Text>
             </TouchableOpacity>
           </View>
@@ -167,7 +195,7 @@ export default function CategoryScreen({ route }) {
               <Swipeable
                 key={idx}
                 renderRightActions={() => (
-                  <TouchableOpacity style={s.deleteAction} onPress={() => removeItem(item)}>
+                  <TouchableOpacity style={s.deleteAction} onPress={() => removeItem(item)} accessibilityRole="button" accessibilityLabel={`移除${item.machineName}`}>
                     <Text style={s.deleteActionText}>删除</Text>
                   </TouchableOpacity>
                 )}
@@ -177,7 +205,7 @@ export default function CategoryScreen({ route }) {
                     <Text style={s.machineName}>{item.machineName}</Text>
                     <Text style={s.gymName}>{item.gymName} · {item.count} 条记录</Text>
                     {item.best && (
-                      <Text style={s.machineBest}>最佳 {item.best.volume} kg·次</Text>
+                      <Text style={s.machineBest}>最佳 {item.best.volume} 千克·次</Text>
                     )}
                   </View>
                 </View>
@@ -188,30 +216,31 @@ export default function CategoryScreen({ route }) {
 
       </ScrollView>
 
-      {/* 添加器械 Modal — 逐级选择：健身房 → 器械 */}
       <Modal transparent visible={addModalVisible} animationType="slide" onRequestClose={() => setAddModalVisible(false)}>
         <TouchableOpacity style={s.modalOverlay} activeOpacity={1} onPress={() => setAddModalVisible(false)}>
-          <View style={s.modalSheet} onStartShouldSetResponder={() => true}>
+          <View style={[s.modalSheet, { paddingBottom: Math.max(insets.bottom + 16, 32) }]} onStartShouldSetResponder={() => true}>
+            <View style={s.modalHandle} />
 
-            {/* 标题栏 */}
             <View style={s.modalHeader}>
               {pickerStep === 'machine' ? (
-                <TouchableOpacity onPress={() => setPickerStep('gym')} style={s.backBtn}>
-                  <Text style={s.backBtnText}>‹ 返回</Text>
+                <TouchableOpacity onPress={() => setPickerStep('gym')} style={s.backBtn} accessibilityRole="button" accessibilityLabel="返回健身房列表">
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Ionicons name="chevron-back" size={18} color={theme.accent} accessible={false} />
+                    <Text style={s.backBtnText}>返回</Text>
+                  </View>
                 </TouchableOpacity>
               ) : <View style={{ width: 60 }} />}
               <Text style={s.modalTitle}>
                 {pickerStep === 'gym' ? '选择健身房' : pickerGym?.name}
               </Text>
-              <TouchableOpacity onPress={() => setAddModalVisible(false)} style={s.closeBtn}>
+              <TouchableOpacity onPress={() => setAddModalVisible(false)} style={s.closeBtn} accessibilityRole="button" accessibilityLabel="关闭">
                 <Text style={s.closeBtnText}>关闭</Text>
               </TouchableOpacity>
             </View>
 
-            {/* 第一步：选健身房 */}
             {pickerStep === 'gym' && (
               <FlatList
-                data={data.gyms}
+                data={gyms}
                 keyExtractor={g => g.id}
                 style={{ maxHeight: 400 }}
                 renderItem={({ item: gym }) => (
@@ -227,7 +256,6 @@ export default function CategoryScreen({ route }) {
               />
             )}
 
-            {/* 第二步：选器械 */}
             {pickerStep === 'machine' && (
               <FlatList
                 data={pickerGym?.machines || []}
@@ -262,80 +290,82 @@ export default function CategoryScreen({ route }) {
   );
 }
 
-const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#F7F7F7' },
+const makeStyles = (t) => StyleSheet.create({
+  safe: { flex: 1, backgroundColor: t.bg },
   scroll: { flex: 1 },
   content: { padding: 16, paddingBottom: 60 },
   bestCard: {
-    backgroundColor: '#FFF9E6', borderRadius: 12, padding: 16, marginBottom: 12,
-    borderWidth: 1, borderColor: '#FFD700',
+    backgroundColor: t.goldBg, borderRadius: 12, padding: 16, marginBottom: 12,
+    borderWidth: 1, borderColor: t.goldBorder,
   },
-  bestLabel: { fontSize: 13, color: '#B8860B', fontWeight: '600', marginBottom: 4 },
-  bestVolume: { fontSize: 28, fontWeight: '800', color: '#333', marginBottom: 2 },
-  bestDetail: { fontSize: 13, color: '#888' },
-  bestSource: { fontSize: 12, color: '#B8860B', marginTop: 6, fontWeight: '500' },
+  bestLabel: { fontSize: 13, color: t.gold, fontWeight: '600', marginBottom: 4 },
+  bestVolume: { fontSize: 28, fontWeight: '800', color: t.textPrimary, marginBottom: 2 },
+  bestDetail: { fontSize: 13, color: t.textMuted },
+  bestSource: { fontSize: 12, color: t.gold, marginTop: 6, fontWeight: '500' },
   statsRow: { flexDirection: 'row', gap: 10, marginBottom: 12 },
   statCard: {
-    flex: 1, backgroundColor: '#fff', borderRadius: 12, padding: 14, alignItems: 'center',
+    flex: 1, backgroundColor: t.card, borderRadius: 12, padding: 14, alignItems: 'center',
     shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 1,
   },
-  statNum: { fontSize: 20, fontWeight: '800', color: '#1D9E75', marginBottom: 2 },
-  statLabel: { fontSize: 12, color: '#999' },
+  statNum: { fontSize: 17, fontWeight: '800', color: t.accent, marginBottom: 2 },
+  statLabel: { fontSize: 12, color: t.textMuted },
   chartCard: {
-    backgroundColor: '#fff', borderRadius: 12, padding: 16, marginBottom: 12,
+    backgroundColor: t.card, borderRadius: 12, padding: 16, marginBottom: 12,
     shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 1,
   },
-  sectionTitle: { fontSize: 15, fontWeight: '700', color: '#333', marginBottom: 12 },
+  sectionTitle: { fontSize: 15, fontWeight: '700', color: t.textPrimary, marginBottom: 12 },
   machinesCard: {
-    backgroundColor: '#fff', borderRadius: 12, padding: 16,
+    backgroundColor: t.card, borderRadius: 12, padding: 16,
     shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 1,
   },
   machinesHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   addMachineBtn: {
-    backgroundColor: '#1D9E75', borderRadius: 8,
-    paddingHorizontal: 14, paddingVertical: 6,
+    backgroundColor: t.accent, borderRadius: 8,
+    paddingHorizontal: 14, minHeight: 44, justifyContent: 'center',
   },
   addMachineBtnText: { color: '#fff', fontWeight: '600', fontSize: 14 },
   machineRow: {
     flexDirection: 'row', alignItems: 'center',
-    paddingVertical: 10, borderTopWidth: 1, borderColor: '#F0F0F0',
+    paddingVertical: 10, borderTopWidth: 1, borderColor: t.border,
   },
   machineInfo: { flex: 1 },
-  machineName: { fontSize: 15, fontWeight: '600', color: '#222', marginBottom: 2 },
-  gymName: { fontSize: 12, color: '#999', marginBottom: 2 },
-  machineBest: { fontSize: 13, color: '#1D9E75' },
+  machineName: { fontSize: 15, fontWeight: '600', color: t.textPrimary, marginBottom: 2 },
+  gymName: { fontSize: 12, color: t.textMuted, marginBottom: 2 },
+  machineBest: { fontSize: 13, color: t.accent },
   deleteAction: {
-    backgroundColor: '#FF3B30', justifyContent: 'center', alignItems: 'center',
-    width: 72, borderTopRightRadius: 0, borderBottomRightRadius: 0,
+    backgroundColor: '#FF3B30', justifyContent: 'center', alignItems: 'center', width: 72,
   },
   deleteActionText: { color: '#fff', fontSize: 14, fontWeight: '600' },
-  emptyText: { color: '#BBB', fontSize: 14, textAlign: 'center', lineHeight: 22, paddingVertical: 20 },
+  emptyText: { color: t.textFaint, fontSize: 14, textAlign: 'center', lineHeight: 22, paddingVertical: 20 },
   modalOverlay: {
     flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end',
   },
   modalSheet: {
-    backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20,
-    paddingTop: 20, paddingBottom: 40,
+    backgroundColor: t.card, borderTopLeftRadius: 20, borderTopRightRadius: 20,
+    paddingTop: 12,
+  },
+  modalHandle: {
+    width: 36, height: 4, borderRadius: 2, backgroundColor: t.border,
+    alignSelf: 'center', marginBottom: 8,
   },
   modalHeader: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 16, paddingVertical: 14,
-    borderBottomWidth: 1, borderColor: '#F0F0F0',
+    borderBottomWidth: 1, borderColor: t.border,
   },
-  modalTitle: { fontSize: 16, fontWeight: '700', color: '#333' },
+  modalTitle: { fontSize: 16, fontWeight: '700', color: t.textPrimary },
   backBtn: { width: 60 },
-  backBtnText: { fontSize: 16, color: '#1D9E75', fontWeight: '600' },
+  backBtnText: { fontSize: 16, color: t.accent, fontWeight: '600' },
   closeBtn: { width: 60, alignItems: 'flex-end' },
-  closeBtnText: { fontSize: 15, color: '#999' },
-  pickArrow: { fontSize: 18, color: '#CCC' },
+  closeBtnText: { fontSize: 15, color: t.textMuted },
+  pickArrow: { fontSize: 18, color: t.textFaint },
   pickOption: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 20, paddingVertical: 14,
-    borderBottomWidth: 1, borderColor: '#F0F0F0',
+    borderBottomWidth: 1, borderColor: t.border,
   },
-  pickOptionDisabled: { backgroundColor: '#FAFAFA' },
-  pickMachine: { fontSize: 15, fontWeight: '600', color: '#222', marginBottom: 2 },
-  pickGym: { fontSize: 12, color: '#999' },
-  pickDisabledText: { color: '#BBB' },
-  alreadyTag: { fontSize: 12, color: '#BBB', fontStyle: 'italic' },
+  pickOptionDisabled: { backgroundColor: t.input },
+  pickMachine: { fontSize: 15, fontWeight: '600', color: t.textPrimary, marginBottom: 2 },
+  pickDisabledText: { color: t.textFaint },
+  alreadyTag: { fontSize: 12, color: t.textFaint, fontStyle: 'italic' },
 });

@@ -1,22 +1,27 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, SafeAreaView, Platform, Dimensions,
 } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
-import { loadData, today } from '../storage';
+import { useQuery } from '@tanstack/react-query';
+import { fetchGymData, today } from '../storage';
+import { GYM_DATA_KEY } from '../queryClient';
 import InteractiveLineChart from '../components/InteractiveLineChart';
+import { useTheme } from '../ThemeContext';
 
 const W = Dimensions.get('window').width;
 
 function DatePicker({ value, onChange }) {
+  const { theme, isDark } = useTheme();
+
   if (Platform.OS === 'web') {
     const { TextInput } = require('react-native');
     return (
       <TextInput
-        style={dp.webInput}
+        style={[dp.webInput, { borderColor: theme.border, backgroundColor: theme.input, color: theme.textPrimary }]}
         value={value}
         onChangeText={onChange}
         placeholder="YYYY-MM-DD"
+        placeholderTextColor={theme.textFaint}
       />
     );
   }
@@ -26,6 +31,7 @@ function DatePicker({ value, onChange }) {
       value={new Date(value)}
       mode="date"
       display="inline"
+      themeVariant={isDark ? 'dark' : 'light'}
       onChange={(_, d) => d && onChange(d.toISOString().slice(0, 10))}
       style={{ width: '100%' }}
     />
@@ -34,29 +40,23 @@ function DatePicker({ value, onChange }) {
 
 const dp = StyleSheet.create({
   webInput: {
-    borderWidth: 1, borderColor: '#DDD', borderRadius: 8,
+    borderWidth: 1, borderRadius: 8,
     paddingHorizontal: 12, paddingVertical: 10, fontSize: 16,
     marginBottom: 16,
   },
 });
 
 export default function CalendarScreen() {
+  const { theme } = useTheme();
+  const s = useMemo(() => makeStyles(theme), [theme]);
   const [selectedDate, setSelectedDate] = useState(today());
-  const [gyms, setGyms] = useState([]);
-  const [records, setRecords] = useState([]);
+  const { data } = useQuery({ queryKey: GYM_DATA_KEY, queryFn: fetchGymData });
+  const gyms = data?.gyms || [];
+  const records = data?.records || [];
 
-  useFocusEffect(useCallback(() => {
-    loadData().then(d => {
-      setGyms(d.gyms);
-      setRecords(d.records);
-    });
-  }, []));
-
-  // 当日记录
   const dayRecords = records.filter(r => r.date === selectedDate);
   const totalVolume = dayRecords.reduce((s, r) => s + r.volume, 0);
 
-  // 按健身房 → 器械 两级分组
   const gymGroups = {};
   dayRecords.forEach(rec => {
     const gym = gyms.find(g => g.id === rec.gymId);
@@ -73,7 +73,6 @@ export default function CalendarScreen() {
     gymGroups[rec.gymId].machines[rec.machineId].records.push(rec);
   });
 
-  // 所有日期总训练量（用于底部趋势图）
   const allByDate = {};
   records.forEach(r => {
     allByDate[r.date] = (allByDate[r.date] || 0) + r.volume;
@@ -86,7 +85,8 @@ export default function CalendarScreen() {
     <SafeAreaView style={s.safe}>
       <ScrollView style={s.scroll} contentContainerStyle={s.content} nestedScrollEnabled>
 
-        {/* 日历选择器 */}
+        <Text style={s.pageTitle}>日历</Text>
+
         <View style={s.pickerCard}>
           <DatePicker value={selectedDate} onChange={setSelectedDate} />
         </View>
@@ -97,20 +97,15 @@ export default function CalendarScreen() {
           </View>
         ) : (
           <>
-            {/* 当日总览 */}
             <View style={s.summaryCard}>
               <Text style={s.summaryLabel}>当日总训练量</Text>
-              <Text style={s.summaryValue}>{totalVolume.toLocaleString()} kg·次</Text>
+              <Text style={s.summaryValue}>{totalVolume.toLocaleString()} 千克·次</Text>
               <Text style={s.summaryCount}>{dayRecords.length} 条记录</Text>
             </View>
 
-            {/* 按健身房分组 */}
             {Object.entries(gymGroups).map(([gymId, gymGroup]) => (
               <View key={gymId} style={s.gymCard}>
-                {/* 健身房标题 */}
                 <Text style={s.gymTitle}>{gymGroup.gymName}</Text>
-
-                {/* 该健身房下的各器械 */}
                 {Object.entries(gymGroup.machines).map(([machineId, mg], idx) => (
                   <View
                     key={machineId}
@@ -122,7 +117,7 @@ export default function CalendarScreen() {
                         <Text style={s.recDetail}>
                           {r.weight}kg × {r.sets?.length || '?'}组（{r.sets?.join('/') || '?'} 次）
                         </Text>
-                        <Text style={s.recVol}>{r.volume.toLocaleString()} kg·次</Text>
+                        <Text style={s.recVol}>{r.volume.toLocaleString()} 千克·次</Text>
                       </View>
                     ))}
                   </View>
@@ -132,7 +127,6 @@ export default function CalendarScreen() {
           </>
         )}
 
-        {/* 底部趋势图 */}
         {hasTrend && (
           <View style={s.chartCard}>
             <Text style={s.chartTitle}>每日训练量趋势</Text>
@@ -152,25 +146,26 @@ export default function CalendarScreen() {
   );
 }
 
-const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#F7F7F7' },
+const makeStyles = (t) => StyleSheet.create({
+  safe: { flex: 1, backgroundColor: t.bg },
   scroll: { flex: 1 },
   content: { padding: 16, paddingBottom: 48 },
+  pageTitle: { fontSize: 28, fontWeight: '800', color: t.textPrimary, marginBottom: 16 },
 
   pickerCard: {
-    backgroundColor: '#fff', borderRadius: 12, padding: 12,
+    backgroundColor: t.card, borderRadius: 12, padding: 12,
     marginBottom: 12, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 1,
     overflow: 'hidden',
   },
 
   emptyCard: {
-    backgroundColor: '#fff', borderRadius: 12, padding: 40, alignItems: 'center',
+    backgroundColor: t.card, borderRadius: 12, padding: 40, alignItems: 'center',
     marginBottom: 12,
   },
-  emptyText: { color: '#BBB', fontSize: 16 },
+  emptyText: { color: t.textFaint, fontSize: 16 },
 
   summaryCard: {
-    backgroundColor: '#1D9E75', borderRadius: 12, padding: 20,
+    backgroundColor: t.accent, borderRadius: 12, padding: 20,
     marginBottom: 12, alignItems: 'center',
   },
   summaryLabel: { fontSize: 13, color: 'rgba(255,255,255,0.8)', marginBottom: 4 },
@@ -178,28 +173,28 @@ const s = StyleSheet.create({
   summaryCount: { fontSize: 13, color: 'rgba(255,255,255,0.7)' },
 
   gymCard: {
-    backgroundColor: '#fff', borderRadius: 12, padding: 14,
+    backgroundColor: t.card, borderRadius: 12, padding: 14,
     marginBottom: 10, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 1,
   },
   gymTitle: {
-    fontSize: 12, fontWeight: '700', color: '#1D9E75',
+    fontSize: 12, fontWeight: '700', color: t.accent,
     letterSpacing: 0.4, marginBottom: 10, textTransform: 'uppercase',
   },
 
   machineBlock: { paddingTop: 10 },
-  machineBlockBorder: { borderTopWidth: 1, borderColor: '#F0F0F0', marginTop: 10 },
-  machineName: { fontSize: 15, fontWeight: '700', color: '#222', marginBottom: 8 },
+  machineBlockBorder: { borderTopWidth: 1, borderColor: t.border, marginTop: 10 },
+  machineName: { fontSize: 15, fontWeight: '700', color: t.textPrimary, marginBottom: 8 },
 
   recRow: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingVertical: 5, borderTopWidth: 1, borderColor: '#F5F5F5',
+    paddingVertical: 5, borderTopWidth: 1, borderColor: t.borderAlt,
   },
-  recDetail: { fontSize: 13, color: '#555' },
-  recVol: { fontSize: 13, fontWeight: '700', color: '#1D9E75' },
+  recDetail: { fontSize: 13, color: t.textSecondary },
+  recVol: { fontSize: 13, fontWeight: '700', color: t.accent },
 
   chartCard: {
-    backgroundColor: '#fff', borderRadius: 12, padding: 16,
+    backgroundColor: t.card, borderRadius: 12, padding: 16,
     marginTop: 4, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 1,
   },
-  chartTitle: { fontSize: 15, fontWeight: '700', color: '#333', marginBottom: 8 },
+  chartTitle: { fontSize: 15, fontWeight: '700', color: t.textPrimary, marginBottom: 8 },
 });
