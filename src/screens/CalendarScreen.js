@@ -98,8 +98,11 @@ export default function CalendarScreen() {
         ) : (
           <>
             <View style={s.summaryCard}>
-              <Text style={s.summaryLabel}>当日总训练量</Text>
-              <Text style={s.summaryValue}>{totalVolume.toLocaleString()} 千克·次</Text>
+              <View style={s.summaryTopRow}>
+                <Text style={s.summaryLabel}>当日总训练量</Text>
+                <Text style={s.summaryUnit}>千克·次</Text>
+              </View>
+              <Text style={s.summaryValue}>{totalVolume.toLocaleString()}</Text>
               <Text style={s.summaryCount}>{dayRecords.length} 条记录</Text>
             </View>
 
@@ -115,7 +118,7 @@ export default function CalendarScreen() {
                     {mg.records.map(r => (
                       <View key={r.id} style={s.recRow}>
                         <Text style={s.recDetail}>
-                          {r.weight}kg × {r.sets?.length || '?'}组（{r.sets?.join('/') || '?'} 次）
+                          {r.weight} 千克 × {r.sets?.length || '?'}组（{r.sets?.join('/') || '?'} 次）
                         </Text>
                         <Text style={s.recVol}>{r.volume.toLocaleString()} 千克·次</Text>
                       </View>
@@ -165,12 +168,16 @@ const makeStyles = (t) => StyleSheet.create({
   emptyText: { color: t.textFaint, fontSize: 16 },
 
   summaryCard: {
-    backgroundColor: t.accent, borderRadius: 12, padding: 20,
-    marginBottom: 12, alignItems: 'center',
+    backgroundColor: t.accent, borderRadius: 16,
+    paddingHorizontal: 16, paddingVertical: 18,
+    marginBottom: 12,
   },
-  summaryLabel: { fontSize: 13, color: 'rgba(255,255,255,0.8)', marginBottom: 4 },
-  summaryValue: { fontSize: 32, fontWeight: '800', color: '#fff', marginBottom: 2 },
-  summaryCount: { fontSize: 13, color: 'rgba(255,255,255,0.7)' },
+  summaryTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  summaryLabel: { fontSize: 12, fontWeight: '600', color: 'rgba(255,255,255,0.85)' },
+  summaryUnit: { fontSize: 11, color: 'rgba(255,255,255,0.7)' },
+  summaryValue: { fontSize: 36, fontWeight: '900', color: '#fff', textAlign: 'center', marginBottom: 12 },
+  summaryCount: { fontSize: 11, color: 'rgba(255,255,255,0.7)', textAlign: 'right' },
+  unitSuffix: { fontSize: 14, fontWeight: '400', color: 'rgba(255,255,255,0.7)' },
 
   gymCard: {
     backgroundColor: t.card, borderRadius: 12, padding: 14,

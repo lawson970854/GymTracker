@@ -8,9 +8,10 @@ import { Swipeable } from 'react-native-gesture-handler';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchGymData, addGym as dbAddGym, deleteGym as dbDeleteGym } from '../storage';
+import { fetchGymData, addGym as dbAddGym, deleteGym as dbDeleteGym, updateGymName as dbUpdateGymName } from '../storage';
 import { GYM_DATA_KEY } from '../queryClient';
 import { useTheme } from '../ThemeContext';
+import RenameModal from '../components/RenameModal';
 
 export default function HomeScreen({ navigation }) {
   const headerHeight = useHeaderHeight();
@@ -22,6 +23,7 @@ export default function HomeScreen({ navigation }) {
 
   const [newName, setNewName] = useState('');
   const [adding, setAdding] = useState(false);
+  const [renamingGym, setRenamingGym] = useState(null);
 
   const addMutation = useMutation({
     mutationFn: dbAddGym,
@@ -55,6 +57,24 @@ export default function HomeScreen({ navigation }) {
     onError: (err, vars, ctx) => {
       if (ctx?.prev) qc.setQueryData(GYM_DATA_KEY, ctx.prev);
       Alert.alert('删除失败', '请检查网络连接');
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: GYM_DATA_KEY }),
+  });
+
+  const renameMutation = useMutation({
+    mutationFn: ({ id, name }) => dbUpdateGymName(id, name),
+    onMutate: async ({ id, name }) => {
+      await qc.cancelQueries({ queryKey: GYM_DATA_KEY });
+      const prev = qc.getQueryData(GYM_DATA_KEY);
+      qc.setQueryData(GYM_DATA_KEY, old => ({
+        ...old,
+        gyms: (old?.gyms || []).map(g => g.id === id ? { ...g, name } : g),
+      }));
+      return { prev };
+    },
+    onError: (err, vars, ctx) => {
+      if (ctx?.prev) qc.setQueryData(GYM_DATA_KEY, ctx.prev);
+      Alert.alert('重命名失败', '请检查网络连接');
     },
     onSettled: () => qc.invalidateQueries({ queryKey: GYM_DATA_KEY }),
   });
@@ -93,14 +113,24 @@ export default function HomeScreen({ navigation }) {
             renderItem={({ item }) => (
               <Swipeable
                 renderRightActions={() => (
-                  <TouchableOpacity
-                    style={s.deleteAction}
-                    onPress={() => deleteGym(item)}
-                    accessibilityLabel={`删除${item.name}`}
-                    accessibilityRole="button"
-                  >
-                    <Text style={s.deleteActionText}>删除</Text>
-                  </TouchableOpacity>
+                  <View style={s.swipeActions}>
+                    <TouchableOpacity
+                      style={s.editAction}
+                      onPress={() => setRenamingGym(item)}
+                      accessibilityLabel={`重命名${item.name}`}
+                      accessibilityRole="button"
+                    >
+                      <Text style={s.editActionText}>编辑</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={s.deleteAction}
+                      onPress={() => deleteGym(item)}
+                      accessibilityLabel={`删除${item.name}`}
+                      accessibilityRole="button"
+                    >
+                      <Text style={s.deleteActionText}>删除</Text>
+                    </TouchableOpacity>
+                  </View>
                 )}
               >
                 <TouchableOpacity
@@ -155,6 +185,19 @@ export default function HomeScreen({ navigation }) {
           )}
         </View>
       </KeyboardAvoidingView>
+
+      <RenameModal
+        visible={!!renamingGym}
+        title="重命名健身房"
+        initialValue={renamingGym?.name || ''}
+        onCancel={() => setRenamingGym(null)}
+        onConfirm={(name) => {
+          if (renamingGym && name !== renamingGym.name) {
+            renameMutation.mutate({ id: renamingGym.id, name });
+          }
+          setRenamingGym(null);
+        }}
+      />
     </SafeAreaView>
   );
 }
@@ -163,9 +206,15 @@ const makeStyles = (t) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: t.bg },
   container: { flex: 1, padding: 16 },
   sectionTitle: { fontSize: 13, fontWeight: '600', color: t.textMuted, marginBottom: 10, letterSpacing: 0.5 },
+  swipeActions: { flexDirection: 'row', marginBottom: 10 },
+  editAction: {
+    backgroundColor: '#5B9BD5', justifyContent: 'center', alignItems: 'center',
+    width: 64,
+  },
+  editActionText: { color: '#fff', fontSize: 14, fontWeight: '600' },
   deleteAction: {
     backgroundColor: '#FF3B30', justifyContent: 'center', alignItems: 'center',
-    width: 72, marginBottom: 10,
+    width: 64,
     borderTopRightRadius: 12, borderBottomRightRadius: 12,
   },
   deleteActionText: { color: '#fff', fontSize: 14, fontWeight: '600' },

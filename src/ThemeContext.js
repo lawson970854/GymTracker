@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
-import { useColorScheme } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const SETTINGS_KEY = 'app_settings_v1';
@@ -48,36 +47,38 @@ export const RADIUS = { card: 12, btn: 12, input: 8, modal: 20 };
 
 const ThemeContext = createContext({
   theme: LIGHT,
-  mode: 'system',
+  mode: 'light',
   setMode: () => {},
   isDark: false,
 });
 
 export function ThemeProvider({ children }) {
-  const systemScheme = useColorScheme();
-  const [mode, setModeState] = useState('system');
+  const [mode, setModeState] = useState('light');
 
   useEffect(() => {
     AsyncStorage.getItem(SETTINGS_KEY).then(raw => {
       if (raw) {
         try {
           const s = JSON.parse(raw);
-          if (s.themeMode) setModeState(s.themeMode);
+          // 只接受 'light' / 'dark'，老数据里的 'system' 一律回退到 'light'
+          if (s.themeMode === 'dark' || s.themeMode === 'light') {
+            setModeState(s.themeMode);
+          }
         } catch {}
       }
     });
   }, []);
 
   const setMode = async (m) => {
-    setModeState(m);
+    const next = m === 'dark' ? 'dark' : 'light';
+    setModeState(next);
     const raw = await AsyncStorage.getItem(SETTINGS_KEY);
     const s = raw ? JSON.parse(raw) : {};
-    s.themeMode = m;
+    s.themeMode = next;
     await AsyncStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
   };
 
-  const resolvedScheme = mode === 'system' ? (systemScheme ?? 'light') : mode;
-  const isDark = resolvedScheme === 'dark';
+  const isDark = mode === 'dark';
   const theme = isDark ? DARK : LIGHT;
 
   const value = useMemo(() => ({ theme, mode, setMode, isDark }), [theme, mode, isDark]);

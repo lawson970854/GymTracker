@@ -1,17 +1,20 @@
 import React, { useState, useMemo } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity,
-  TextInput, Alert, StyleSheet, SafeAreaView,
+  TextInput, Alert, StyleSheet, SafeAreaView, KeyboardAvoidingView, Platform,
 } from 'react-native';
+import { useHeaderHeight } from '@react-navigation/elements';
 import { Swipeable } from 'react-native-gesture-handler';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchGymData, addCategory as dbAddCategory, deleteCategory as dbDeleteCategory } from '../storage';
+import { fetchGymData, addCategory as dbAddCategory, deleteCategory as dbDeleteCategory, updateCategoryName as dbUpdateCategoryName } from '../storage';
 import { GYM_DATA_KEY } from '../queryClient';
 import { useTheme } from '../ThemeContext';
+import RenameModal from '../components/RenameModal';
 
 export default function CategoryListScreen({ navigation }) {
+  const headerHeight = useHeaderHeight();
   const { theme } = useTheme();
   const s = useMemo(() => makeStyles(theme), [theme]);
   const qc = useQueryClient();
@@ -20,6 +23,7 @@ export default function CategoryListScreen({ navigation }) {
 
   const [newName, setNewName] = useState('');
   const [adding, setAdding] = useState(false);
+  const [renamingCat, setRenamingCat] = useState(null);
 
   const addMutation = useMutation({
     mutationFn: dbAddCategory,
@@ -57,6 +61,24 @@ export default function CategoryListScreen({ navigation }) {
     onSettled: () => qc.invalidateQueries({ queryKey: GYM_DATA_KEY }),
   });
 
+  const renameMutation = useMutation({
+    mutationFn: ({ id, name }) => dbUpdateCategoryName(id, name),
+    onMutate: async ({ id, name }) => {
+      await qc.cancelQueries({ queryKey: GYM_DATA_KEY });
+      const prev = qc.getQueryData(GYM_DATA_KEY);
+      qc.setQueryData(GYM_DATA_KEY, old => ({
+        ...old,
+        categories: (old?.categories || []).map(c => c.id === id ? { ...c, name } : c),
+      }));
+      return { prev };
+    },
+    onError: (err, vars, ctx) => {
+      if (ctx?.prev) qc.setQueryData(GYM_DATA_KEY, ctx.prev);
+      Alert.alert('重命名失败', '请检查网络连接');
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: GYM_DATA_KEY }),
+  });
+
   const addCategory = () => {
     const name = newName.trim();
     if (!name) return;
@@ -81,6 +103,7 @@ export default function CategoryListScreen({ navigation }) {
 
   return (
     <SafeAreaView style={s.safe}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={headerHeight}>
       <View style={s.container}>
         <FlatList
           data={categories}
@@ -89,14 +112,24 @@ export default function CategoryListScreen({ navigation }) {
           renderItem={({ item }) => (
             <Swipeable
               renderRightActions={() => (
-                <TouchableOpacity
-                  style={s.deleteAction}
-                  onPress={() => deleteCategory(item)}
-                  accessibilityLabel={`删除${item.name}`}
-                  accessibilityRole="button"
-                >
-                  <Text style={s.deleteActionText}>删除</Text>
-                </TouchableOpacity>
+                <View style={s.swipeActions}>
+                  <TouchableOpacity
+                    style={s.editAction}
+                    onPress={() => setRenamingCat(item)}
+                    accessibilityLabel={`重命名${item.name}`}
+                    accessibilityRole="button"
+                  >
+                    <Text style={s.editActionText}>编辑</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={s.deleteAction}
+                    onPress={() => deleteCategory(item)}
+                    accessibilityLabel={`删除${item.name}`}
+                    accessibilityRole="button"
+                  >
+                    <Text style={s.deleteActionText}>删除</Text>
+                  </TouchableOpacity>
+                </View>
               )}
             >
               <TouchableOpacity
@@ -153,6 +186,20 @@ export default function CategoryListScreen({ navigation }) {
           </TouchableOpacity>
         )}
       </View>
+      </KeyboardAvoidingView>
+
+      <RenameModal
+        visible={!!renamingCat}
+        title="重命名分类"
+        initialValue={renamingCat?.name || ''}
+        onCancel={() => setRenamingCat(null)}
+        onConfirm={(name) => {
+          if (renamingCat && name !== renamingCat.name) {
+            renameMutation.mutate({ id: renamingCat.id, name });
+          }
+          setRenamingCat(null);
+        }}
+      />
     </SafeAreaView>
   );
 }
@@ -160,9 +207,15 @@ export default function CategoryListScreen({ navigation }) {
 const makeStyles = (t) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: t.bg },
   container: { flex: 1, padding: 16 },
+  swipeActions: { flexDirection: 'row', marginBottom: 10 },
+  editAction: {
+    backgroundColor: '#5B9BD5', justifyContent: 'center', alignItems: 'center',
+    width: 64,
+  },
+  editActionText: { color: '#fff', fontSize: 14, fontWeight: '600' },
   deleteAction: {
     backgroundColor: '#FF3B30', justifyContent: 'center', alignItems: 'center',
-    width: 72, marginBottom: 10,
+    width: 64,
     borderTopRightRadius: 12, borderBottomRightRadius: 12,
   },
   deleteActionText: { color: '#fff', fontSize: 14, fontWeight: '600' },

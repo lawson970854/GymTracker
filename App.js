@@ -20,7 +20,7 @@ import MachineScreen from './src/screens/MachineScreen';
 import CalendarScreen from './src/screens/CalendarScreen';
 import CategoryListScreen from './src/screens/CategoryListScreen';
 import CategoryScreen from './src/screens/CategoryScreen';
-import TrendsScreen from './src/screens/TrendsScreen';
+
 import ProfileScreen from './src/screens/ProfileScreen';
 import { ThemeProvider, useTheme } from './src/ThemeContext';
 
@@ -82,15 +82,7 @@ function MainTabs() {
           tabBarIcon: ({ color, size }) => <Ionicons name="calendar-outline" size={size} color={color} />,
         }}
       />
-      <Tab.Screen
-        name="TrendsTab"
-        component={TrendsScreen}
-        options={{
-          header: () => null,
-          tabBarLabel: '趋势',
-          tabBarIcon: ({ color, size }) => <Ionicons name="trending-up-outline" size={size} color={color} />,
-        }}
-      />
+
       <Tab.Screen
         name="ProfileTab"
         component={ProfileScreen}

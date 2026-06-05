@@ -1,6 +1,6 @@
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, TextInput,
+  View, Text, ScrollView, FlatList, TouchableOpacity, TextInput,
   StyleSheet, SafeAreaView, Platform, Dimensions, Alert, Modal,
   KeyboardAvoidingView, ActionSheetIOS,
 } from 'react-native';
@@ -15,6 +15,65 @@ import InteractiveLineChart from '../components/InteractiveLineChart';
 import { useTheme } from '../ThemeContext';
 
 const W = Dimensions.get('window').width;
+
+const WEIGHT_OPTIONS = Array.from({ length: 300 }, (_, i) => i + 1);
+
+function WeightPicker({ value, onChange }) {
+  const { theme } = useTheme();
+  const s = useMemo(() => makeStyles(theme), [theme]);
+  const [visible, setVisible] = useState(false);
+  const numVal = parseInt(value) || 20;
+
+  return (
+    <>
+      <TouchableOpacity
+        style={s.weightBtn}
+        onPress={() => setVisible(true)}
+        accessibilityLabel={`当前重量 ${value} 千克，点击更改`}
+        accessibilityRole="button"
+      >
+        <Text style={s.weightVal}>{value}</Text>
+        <Text style={s.weightArrow} accessible={false}>▾</Text>
+      </TouchableOpacity>
+
+      <Modal transparent visible={visible} animationType="fade" onRequestClose={() => setVisible(false)}>
+        <View style={s.wPickerRoot}>
+          <TouchableOpacity
+            style={StyleSheet.absoluteFill}
+            activeOpacity={1}
+            onPress={() => setVisible(false)}
+            accessibilityLabel="关闭"
+          />
+          <View style={s.wPickerBox}>
+            <Text style={s.wPickerTitle}>选择重量（千克）</Text>
+            <FlatList
+              data={WEIGHT_OPTIONS}
+              keyExtractor={n => String(n)}
+              style={{ maxHeight: 300 }}
+              initialScrollIndex={Math.max(0, numVal - 1)}
+              getItemLayout={(_, i) => ({ length: 48, offset: 48 * i, index: i })}
+              showsVerticalScrollIndicator={true}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={[s.wOption, item === numVal && s.wOptionSelected]}
+                  onPress={() => { onChange(String(item)); setVisible(false); }}
+                  accessibilityLabel={`${item} 千克`}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: item === numVal }}
+                >
+                  <Text style={[s.wOptionText, item === numVal && s.wOptionTextSelected]}>
+                    {item}
+                  </Text>
+                  {item === numVal && <Text style={s.wCheck} accessible={false}>✓</Text>}
+                </TouchableOpacity>
+              )}
+            />
+          </View>
+        </View>
+      </Modal>
+    </>
+  );
+}
 
 function DatePicker({ value, onChange }) {
   const { theme, isDark } = useTheme();
@@ -68,7 +127,7 @@ export default function MachineScreen({ route }) {
   const trainDays = new Set(records.map(r => r.date)).size;
 
   const [date, setDate] = useState(today());
-  const [weight, setWeight] = useState(() => bestRecord ? String(bestRecord.weight) : '');
+  const [weight, setWeight] = useState(() => bestRecord ? String(Math.round(bestRecord.weight)) : '20');
   const [sets, setSets] = useState(() => bestRecord ? [...bestRecord.sets] : [10, 10, 10]);
   const [trophy, setTrophy] = useState(null);
 
@@ -152,7 +211,7 @@ export default function MachineScreen({ route }) {
   const openEdit = (rec) => {
     setEditRec(rec);
     setEditDate(rec.date);
-    setEditWeight(String(rec.weight));
+    setEditWeight(String(Math.round(rec.weight)));
     setEditSets([...rec.sets]);
   };
 
@@ -185,7 +244,7 @@ export default function MachineScreen({ route }) {
       ActionSheetIOS.showActionSheetWithOptions(
         {
           title: rec.date,
-          message: `${rec.weight}kg × ${rec.sets?.join('/')} 次  |  ${rec.volume} 千克·次`,
+          message: `${rec.weight} 千克 × ${rec.sets?.length}组（${rec.sets?.join('/')} 次）  |  ${rec.volume.toLocaleString()} 千克·次`,
           options: ['取消', '编辑', '删除'],
           destructiveButtonIndex: 2,
           cancelButtonIndex: 0,
@@ -198,7 +257,7 @@ export default function MachineScreen({ route }) {
     } else {
       Alert.alert(
         rec.date,
-        `${rec.weight}kg × ${rec.sets?.join('/')} 次  |  ${rec.volume} 千克·次`,
+        `${rec.weight} 千克 × ${rec.sets?.length}组（${rec.sets?.join('/')} 次）  |  ${rec.volume.toLocaleString()} 千克·次`,
         [
           { text: '编辑', onPress: () => openEdit(rec) },
           { text: '删除', style: 'destructive', onPress: () => deleteRecord(rec) },
@@ -231,9 +290,9 @@ export default function MachineScreen({ route }) {
         {bestRecord && (
           <View style={s.bestCard}>
             <Text style={s.bestLabel} accessible={false}>🏆 历史最佳</Text>
-            <Text style={s.bestVolume}>{bestRecord.volume} 千克·次</Text>
+            <Text style={s.bestVolume}>{bestRecord.volume}<Text style={s.unitSuffix}> 千克·次</Text></Text>
             <Text style={s.bestDetail}>
-              {bestRecord.weight}kg × {bestRecord.sets.length}组（{bestRecord.sets.join('/')} 次） · {bestRecord.date}
+              {bestRecord.weight} 千克 × {bestRecord.sets.length}组（{bestRecord.sets.join('/')} 次） · {bestRecord.date}
             </Text>
           </View>
         )}
@@ -265,17 +324,8 @@ export default function MachineScreen({ route }) {
             <DatePicker value={date} onChange={setDate} />
           </View>
 
-          <Text style={[s.fieldLabel, { marginTop: 14 }]}>重量（kg）</Text>
-          <TextInput
-            style={s.weightInput}
-            placeholder="例如：80"
-            placeholderTextColor={theme.textFaint}
-            keyboardType="decimal-pad"
-            returnKeyType="done"
-            value={weight}
-            onChangeText={setWeight}
-            accessibilityLabel="重量，单位千克"
-          />
+          <Text style={[s.fieldLabel, { marginTop: 14 }]}>重量（千克）</Text>
+          <WeightPicker value={weight} onChange={setWeight} />
 
           <View style={{ marginTop: 14 }}>
             <SetInput sets={sets} onChange={setSets} />
@@ -314,13 +364,15 @@ export default function MachineScreen({ route }) {
                 style={s.histRow}
                 onPress={() => showActions(r)}
                 accessibilityRole="button"
-                accessibilityLabel={`${r.date}，${r.weight}千克，${r.sets?.join('/')}次，训练量${r.volume}千克次，点击查看操作`}
+                accessibilityLabel={`${r.date}，${r.weight}千克，${r.sets?.join('/')}次，训练量${r.volume}千克·次，点击查看操作`}
               >
-                <Text style={s.histDate} maxFontSizeMultiplier={1.2}>{r.date}</Text>
+                <View style={s.histTop}>
+                  <Text style={s.histDate} maxFontSizeMultiplier={1.2}>{r.date}</Text>
+                  <Text style={s.histVol} maxFontSizeMultiplier={1.2}>{r.volume.toLocaleString()} 千克·次</Text>
+                </View>
                 <Text style={s.histDetail} maxFontSizeMultiplier={1.2}>
-                  {r.weight}kg × {r.sets?.join('/')} 次
+                  {r.weight} 千克 × {r.sets?.length}组（{r.sets?.join('/')} 次）
                 </Text>
-                <Text style={s.histVol} maxFontSizeMultiplier={1.2}>{r.volume}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -342,16 +394,8 @@ export default function MachineScreen({ route }) {
               <DatePicker value={editDate} onChange={setEditDate} />
             </View>
 
-            <Text style={[s.fieldLabel, { marginTop: 14 }]}>重量（kg）</Text>
-            <TextInput
-              style={s.weightInput}
-              keyboardType="decimal-pad"
-              returnKeyType="done"
-              value={editWeight}
-              onChangeText={setEditWeight}
-              placeholderTextColor={theme.textFaint}
-              accessibilityLabel="重量，单位千克"
-            />
+            <Text style={[s.fieldLabel, { marginTop: 14 }]}>重量（千克）</Text>
+            <WeightPicker value={editWeight} onChange={setEditWeight} />
 
             <View style={{ marginTop: 14 }}>
               <SetInput sets={editSets} onChange={setEditSets} />
@@ -390,6 +434,7 @@ const makeStyles = (t) => StyleSheet.create({
   bestLabel: { fontSize: 13, color: t.gold, fontWeight: '600', marginBottom: 4 },
   bestVolume: { fontSize: 28, fontWeight: '800', color: t.textPrimary, marginBottom: 2 },
   bestDetail: { fontSize: 13, color: t.textMuted },
+  unitSuffix: { fontSize: 14, fontWeight: '400', color: t.textMuted },
   statsRow: { flexDirection: 'row', gap: 10, marginBottom: 12 },
   statCard: {
     flex: 1, backgroundColor: t.card, borderRadius: 12, padding: 14, alignItems: 'center',
@@ -407,11 +452,32 @@ const makeStyles = (t) => StyleSheet.create({
     minHeight: 44,
   },
   fieldLabel: { fontSize: 14, color: t.textSecondary, marginBottom: 6 },
-  weightInput: {
+  weightBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     borderWidth: 1, borderColor: t.border, borderRadius: 8,
-    paddingHorizontal: 12, paddingVertical: 10, fontSize: 22, fontWeight: '700',
-    textAlign: 'center', color: t.textPrimary, backgroundColor: t.input,
+    paddingHorizontal: 12, minHeight: 44, backgroundColor: t.input,
   },
+  weightVal: { fontSize: 22, fontWeight: '700', color: t.textPrimary },
+  weightArrow: { fontSize: 14, color: t.textFaint },
+  wPickerRoot: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' },
+  wPickerBox: {
+    backgroundColor: t.card, borderRadius: 16, width: 260, overflow: 'hidden',
+    shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 12, elevation: 8,
+  },
+  wPickerTitle: {
+    fontSize: 15, fontWeight: '700', color: t.textPrimary,
+    textAlign: 'center', paddingVertical: 14,
+    borderBottomWidth: 1, borderColor: t.border,
+  },
+  wOption: {
+    height: 48, paddingHorizontal: 20,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    borderBottomWidth: 1, borderColor: t.borderAlt,
+  },
+  wOptionSelected: { backgroundColor: t.accentBg },
+  wOptionText: { fontSize: 16, color: t.textSecondary },
+  wOptionTextSelected: { color: t.accent, fontWeight: '700' },
+  wCheck: { fontSize: 16, color: t.accent },
   preview: { fontSize: 13, color: t.accent, fontWeight: '600', marginTop: 10, textAlign: 'center' },
   saveBtn: {
     backgroundColor: t.accent, borderRadius: 12,
@@ -427,13 +493,16 @@ const makeStyles = (t) => StyleSheet.create({
     shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 1,
   },
   histRow: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingVertical: 18, paddingRight: 12,
+    paddingVertical: 12, paddingRight: 12,
     borderBottomWidth: 1, borderColor: t.border,
     backgroundColor: t.card,
   },
-  histDate: { width: 90, fontSize: 13, color: t.textMuted },
-  histDetail: { flex: 1, fontSize: 13, color: t.textSecondary },
+  histTop: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    marginBottom: 4,
+  },
+  histDate: { fontSize: 13, color: t.textMuted },
+  histDetail: { fontSize: 13, color: t.textSecondary },
   histVol: { fontSize: 14, fontWeight: '700', color: t.accent },
   editOverlay: {
     flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end',

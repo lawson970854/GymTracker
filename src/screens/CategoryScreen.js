@@ -137,9 +137,9 @@ export default function CategoryScreen({ route }) {
         {overallBest && (
           <View style={s.bestCard}>
             <Text style={s.bestLabel}>🏆 同类历史最佳</Text>
-            <Text style={s.bestVolume}>{overallBest.volume} 千克·次</Text>
+            <Text style={s.bestVolume}>{overallBest.volume}<Text style={s.unitSuffix}> 千克·次</Text></Text>
             <Text style={s.bestDetail}>
-              {overallBest.weight}kg × {overallBest.sets?.length || 0}组（{overallBest.sets?.join('/') || '-'} 次）· {overallBest.date}
+              {overallBest.weight} 千克 × {overallBest.sets?.length || 0}组（{overallBest.sets?.join('/') || '-'} 次）· {overallBest.date}
             </Text>
             {bestItem && (
               <Text style={s.bestSource}>
@@ -302,6 +302,7 @@ const makeStyles = (t) => StyleSheet.create({
   bestVolume: { fontSize: 28, fontWeight: '800', color: t.textPrimary, marginBottom: 2 },
   bestDetail: { fontSize: 13, color: t.textMuted },
   bestSource: { fontSize: 12, color: t.gold, marginTop: 6, fontWeight: '500' },
+  unitSuffix: { fontSize: 14, fontWeight: '400', color: t.textMuted },
   statsRow: { flexDirection: 'row', gap: 10, marginBottom: 12 },
   statCard: {
     flex: 1, backgroundColor: t.card, borderRadius: 12, padding: 14, alignItems: 'center',
