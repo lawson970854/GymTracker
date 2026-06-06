@@ -3,7 +3,7 @@ import {
   View, Text, TextInput, TouchableOpacity, Modal,
   KeyboardAvoidingView, Platform, StyleSheet,
 } from 'react-native';
-import { useTheme } from '../ThemeContext';
+import { useTheme, RADIUS, FONTS } from '../ThemeContext';
 
 // 通用重命名弹窗：传入当前名称和回调，即可让用户修改任何"名称"字段
 export default function RenameModal({ visible, title = '重命名', initialValue = '', onCancel, onConfirm }) {
@@ -57,24 +57,28 @@ export default function RenameModal({ visible, title = '重命名', initialValue
 
 const makeStyles = (t) => StyleSheet.create({
   backdrop: {
-    flex: 1, backgroundColor: 'rgba(0,0,0,0.4)',
+    flex: 1, backgroundColor: 'rgba(10,9,8,0.5)',
     justifyContent: 'center', alignItems: 'center', padding: 20,
   },
   card: {
     width: '100%', maxWidth: 400, backgroundColor: t.card,
-    borderRadius: 14, padding: 20,
+    borderRadius: RADIUS.lg, borderWidth: 1, borderColor: t.border,
+    padding: 22,
   },
-  title: { fontSize: 16, fontWeight: '600', color: t.textPrimary, marginBottom: 12 },
+  title: { fontSize: 16, fontFamily: FONTS.uiBold, color: t.textPrimary, marginBottom: 14 },
   input: {
-    fontSize: 16, paddingHorizontal: 12, paddingVertical: 12,
-    backgroundColor: t.input, borderRadius: 8, color: t.textPrimary,
+    fontSize: 16, paddingHorizontal: 14, paddingVertical: 12,
+    backgroundColor: t.card2,
+    borderRadius: RADIUS.input,
+    borderWidth: 1, borderColor: t.border,
+    color: t.textPrimary, fontFamily: FONTS.ui,
   },
-  btnRow: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 16 },
+  btnRow: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 18 },
   cancelBtn: { minHeight: 40, justifyContent: 'center', paddingHorizontal: 14 },
-  cancelText: { color: t.textMuted, fontSize: 14 },
+  cancelText: { color: t.textMuted, fontSize: 14, fontFamily: FONTS.ui },
   confirmBtn: {
-    backgroundColor: t.accent, borderRadius: 8,
+    backgroundColor: t.accent, borderRadius: 10,
     paddingHorizontal: 18, minHeight: 40, justifyContent: 'center',
   },
-  confirmText: { color: '#fff', fontWeight: '600', fontSize: 14 },
+  confirmText: { color: t.onAccent, fontFamily: FONTS.uiBold, fontSize: 14 },
 });

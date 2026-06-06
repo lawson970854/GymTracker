@@ -1,16 +1,16 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
   StyleSheet, KeyboardAvoidingView, Platform, Alert,
-  ActivityIndicator, useColorScheme, SafeAreaView,
+  ActivityIndicator, SafeAreaView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../supabase';
-import { LIGHT, DARK } from '../ThemeContext';
+import { useTheme, RADIUS, FONTS } from '../ThemeContext';
 
 export default function AuthScreen() {
-  const colorScheme = useColorScheme();
-  const t = colorScheme === 'dark' ? DARK : LIGHT;
+  const { theme: t } = useTheme();
+  const s = useMemo(() => makeStyles(t), [t]);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -42,18 +42,20 @@ export default function AuthScreen() {
   };
 
   return (
-    <SafeAreaView style={[s.safe, { backgroundColor: t.bg }]}>
+    <SafeAreaView style={s.safe}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <View style={s.inner}>
-          <Text style={s.logo} accessible={false}>💪</Text>
-          <Text style={[s.title, { color: t.textPrimary }]}>GymTracker</Text>
-          <Text style={[s.subtitle, { color: t.textMuted }]}>{isLogin ? '登录账号' : '创建账号'}</Text>
+          <View style={s.logoBadge}>
+            <Ionicons name="barbell-outline" size={42} color={t.onAccent} />
+          </View>
+          <Text style={s.title}>GymTracker</Text>
+          <Text style={s.subtitle}>{isLogin ? '登录账号' : '创建账号'}</Text>
 
           <TextInput
-            style={[s.input, { backgroundColor: t.card, color: t.textPrimary }]}
+            style={s.input}
             placeholder="邮箱"
             placeholderTextColor={t.textFaint}
             value={email}
@@ -67,10 +69,10 @@ export default function AuthScreen() {
             accessibilityLabel="邮箱地址"
           />
 
-          <View style={[s.passwordRow, { backgroundColor: t.card }]}>
+          <View style={s.passwordRow}>
             <TextInput
               ref={passwordRef}
-              style={[s.passwordInput, { color: t.textPrimary }]}
+              style={s.passwordInput}
               placeholder="密码（至少 6 位）"
               placeholderTextColor={t.textFaint}
               value={password}
@@ -96,14 +98,14 @@ export default function AuthScreen() {
           </View>
 
           <TouchableOpacity
-            style={[s.btn, { backgroundColor: t.accent }]}
+            style={s.btn}
             onPress={handleAuth}
             disabled={loading}
             accessibilityRole="button"
             accessibilityLabel={isLogin ? '登录' : '注册'}
           >
             {loading
-              ? <ActivityIndicator color="#fff" />
+              ? <ActivityIndicator color={t.onAccent} />
               : <Text style={s.btnText}>{isLogin ? '登录' : '注册'}</Text>
             }
           </TouchableOpacity>
@@ -113,7 +115,7 @@ export default function AuthScreen() {
             accessibilityRole="button"
             accessibilityLabel={isLogin ? '没有账号，点此注册' : '已有账号，点此登录'}
           >
-            <Text style={[s.toggle, { color: t.accent }]}>
+            <Text style={s.toggle}>
               {isLogin ? '没有账号？点此注册' : '已有账号？点此登录'}
             </Text>
           </TouchableOpacity>
@@ -123,28 +125,47 @@ export default function AuthScreen() {
   );
 }
 
-const s = StyleSheet.create({
-  safe: { flex: 1 },
-  inner: { flex: 1, justifyContent: 'center', paddingHorizontal: 32 },
-  logo: { fontSize: 56, textAlign: 'center', marginBottom: 8 },
-  title: { fontSize: 28, fontWeight: '700', textAlign: 'center', marginBottom: 4 },
-  subtitle: { fontSize: 15, textAlign: 'center', marginBottom: 36 },
+const makeStyles = (t) => StyleSheet.create({
+  safe: { flex: 1, backgroundColor: t.bg },
+  inner: { flex: 1, justifyContent: 'center', paddingHorizontal: 34 },
+  logoBadge: {
+    width: 84, height: 84, borderRadius: 24,
+    backgroundColor: t.accent,
+    alignSelf: 'center', alignItems: 'center', justifyContent: 'center',
+    marginBottom: 20,
+    shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 20,
+    shadowOffset: { width: 0, height: 12 }, elevation: 6,
+  },
+  title: {
+    fontSize: 30, fontFamily: FONTS.numBold, color: t.textPrimary,
+    textAlign: 'center', letterSpacing: -0.6,
+  },
+  subtitle: { fontSize: 15, textAlign: 'center', color: t.textMuted, marginTop: 6, marginBottom: 36, fontFamily: FONTS.ui },
   input: {
-    borderRadius: 12, padding: 16,
-    fontSize: 16, marginBottom: 14,
+    height: 54, borderRadius: RADIUS.btn, paddingHorizontal: 16,
+    backgroundColor: t.card,
+    borderWidth: 1, borderColor: t.border,
+    fontSize: 15, color: t.textPrimary, marginBottom: 13,
+    fontFamily: FONTS.ui,
     shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 4, elevation: 1,
   },
   passwordRow: {
     flexDirection: 'row', alignItems: 'center',
-    borderRadius: 12, marginBottom: 14,
+    height: 54, borderRadius: RADIUS.btn, paddingLeft: 16, paddingRight: 4,
+    backgroundColor: t.card,
+    borderWidth: 1, borderColor: t.border,
+    marginBottom: 13,
     shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 4, elevation: 1,
   },
-  passwordInput: { flex: 1, padding: 16, fontSize: 16 },
+  passwordInput: { flex: 1, fontSize: 15, color: t.textPrimary, fontFamily: FONTS.ui },
   eyeBtn: { paddingHorizontal: 14, paddingVertical: 16 },
   btn: {
-    borderRadius: 12,
-    paddingVertical: 16, alignItems: 'center', marginTop: 4, marginBottom: 20,
+    backgroundColor: t.accent, borderRadius: RADIUS.btn,
+    height: 54, alignItems: 'center', justifyContent: 'center',
+    marginTop: 8, marginBottom: 22,
+    shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 18,
+    shadowOffset: { width: 0, height: 10 },
   },
-  btnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  toggle: { fontSize: 14, textAlign: 'center', textDecorationLine: 'underline' },
+  btnText: { color: t.onAccent, fontSize: 16, fontFamily: FONTS.uiBold },
+  toggle: { fontSize: 14, textAlign: 'center', color: t.accentInk, fontFamily: FONTS.uiBold },
 });

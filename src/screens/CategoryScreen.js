@@ -11,7 +11,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchGymData, addCategoryItem, removeCategoryItem } from '../storage';
 import { GYM_DATA_KEY } from '../queryClient';
 import InteractiveLineChart from '../components/InteractiveLineChart';
-import { useTheme } from '../ThemeContext';
+import { useTheme, RADIUS, FONTS } from '../ThemeContext';
 
 const W = Dimensions.get('window').width;
 
@@ -136,8 +136,13 @@ export default function CategoryScreen({ route }) {
 
         {overallBest && (
           <View style={s.bestCard}>
-            <Text style={s.bestLabel}>🏆 同类历史最佳</Text>
-            <Text style={s.bestVolume}>{overallBest.volume}<Text style={s.unitSuffix}> 千克·次</Text></Text>
+            <View style={s.bestTop}>
+              <View style={s.bestBadge}>
+                <Ionicons name="trophy" size={16} color="#fff" />
+              </View>
+              <Text style={s.bestLabel}>同类历史最佳</Text>
+            </View>
+            <Text style={s.bestVolume}>{overallBest.volume.toLocaleString()}<Text style={s.unitSuffix}> 千克·次</Text></Text>
             <Text style={s.bestDetail}>
               {overallBest.weight} 千克 × {overallBest.sets?.length || 0}组（{overallBest.sets?.join('/') || '-'} 次）· {overallBest.date}
             </Text>
@@ -295,78 +300,118 @@ const makeStyles = (t) => StyleSheet.create({
   scroll: { flex: 1 },
   content: { padding: 16, paddingBottom: 60 },
   bestCard: {
-    backgroundColor: t.goldBg, borderRadius: 12, padding: 16, marginBottom: 12,
-    borderWidth: 1, borderColor: t.goldBorder,
+    backgroundColor: t.goldBg,
+    borderRadius: RADIUS.lg, borderWidth: 1, borderColor: t.goldBorder,
+    padding: 18, marginBottom: 12,
+    shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 }, elevation: 2,
   },
-  bestLabel: { fontSize: 13, color: t.gold, fontWeight: '600', marginBottom: 4 },
-  bestVolume: { fontSize: 28, fontWeight: '800', color: t.textPrimary, marginBottom: 2 },
-  bestDetail: { fontSize: 13, color: t.textMuted },
-  bestSource: { fontSize: 12, color: t.gold, marginTop: 6, fontWeight: '500' },
-  unitSuffix: { fontSize: 14, fontWeight: '400', color: t.textMuted },
+  bestTop: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
+  bestBadge: {
+    width: 30, height: 30, borderRadius: 9,
+    backgroundColor: t.gold, alignItems: 'center', justifyContent: 'center',
+  },
+  bestLabel: {
+    fontSize: 11.5, color: t.gold, fontFamily: FONTS.uiBold,
+    letterSpacing: 1.4, textTransform: 'uppercase',
+  },
+  bestVolume: {
+    fontSize: 44, fontFamily: FONTS.numBold, color: t.textPrimary,
+    letterSpacing: -1.5, lineHeight: 46,
+    fontVariant: ['tabular-nums'],
+  },
+  bestDetail: {
+    fontSize: 12.5, color: t.textMuted, marginTop: 8,
+    fontVariant: ['tabular-nums'], fontFamily: FONTS.ui,
+  },
+  bestSource: { fontSize: 12, color: t.gold, marginTop: 8, fontFamily: FONTS.ui, fontWeight: '600' },
+  unitSuffix: { fontSize: 15, fontWeight: '500', color: t.textMuted, fontFamily: FONTS.ui },
   statsRow: { flexDirection: 'row', gap: 10, marginBottom: 12 },
   statCard: {
-    flex: 1, backgroundColor: t.card, borderRadius: 12, padding: 14, alignItems: 'center',
-    shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 1,
+    flex: 1, backgroundColor: t.card,
+    borderRadius: 18, borderWidth: 1, borderColor: t.border,
+    padding: 15, paddingHorizontal: 10, alignItems: 'center',
+    shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 }, elevation: 2,
   },
-  statNum: { fontSize: 17, fontWeight: '800', color: t.accent, marginBottom: 2 },
-  statLabel: { fontSize: 12, color: t.textMuted },
+  statNum: {
+    fontSize: 20, lineHeight: 22, fontFamily: FONTS.num,
+    color: t.accent, letterSpacing: -0.5,
+    fontVariant: ['tabular-nums'],
+  },
+  statLabel: { fontSize: 11, color: t.textMuted, marginTop: 4, fontFamily: FONTS.ui, letterSpacing: 0.3 },
   chartCard: {
-    backgroundColor: t.card, borderRadius: 12, padding: 16, marginBottom: 12,
-    shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 1,
+    backgroundColor: t.card,
+    borderRadius: RADIUS.card, borderWidth: 1, borderColor: t.border,
+    padding: 18, paddingHorizontal: 16, marginBottom: 12,
+    shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 }, elevation: 2,
   },
-  sectionTitle: { fontSize: 15, fontWeight: '700', color: t.textPrimary, marginBottom: 12 },
+  sectionTitle: {
+    fontSize: 11.5, fontFamily: FONTS.uiBold, color: t.textMuted,
+    marginBottom: 14, letterSpacing: 1.6, textTransform: 'uppercase',
+  },
   machinesCard: {
-    backgroundColor: t.card, borderRadius: 12, padding: 16,
-    shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 1,
+    backgroundColor: t.card,
+    borderRadius: RADIUS.card, borderWidth: 1, borderColor: t.border,
+    padding: 18,
+    shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 }, elevation: 2,
   },
   machinesHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   addMachineBtn: {
-    backgroundColor: t.accent, borderRadius: 8,
-    paddingHorizontal: 14, minHeight: 44, justifyContent: 'center',
+    backgroundColor: t.accent, borderRadius: 10,
+    paddingHorizontal: 16, minHeight: 36, justifyContent: 'center',
   },
-  addMachineBtnText: { color: '#fff', fontWeight: '600', fontSize: 14 },
+  addMachineBtnText: { color: t.onAccent, fontFamily: FONTS.uiBold, fontSize: 13 },
   machineRow: {
     flexDirection: 'row', alignItems: 'center',
-    paddingVertical: 10, borderTopWidth: 1, borderColor: t.border,
+    paddingVertical: 12, borderTopWidth: 1, borderColor: t.borderAlt,
+    backgroundColor: t.card,
   },
   machineInfo: { flex: 1 },
-  machineName: { fontSize: 15, fontWeight: '600', color: t.textPrimary, marginBottom: 2 },
-  gymName: { fontSize: 12, color: t.textMuted, marginBottom: 2 },
-  machineBest: { fontSize: 13, color: t.accent },
-  deleteAction: {
-    backgroundColor: '#FF3B30', justifyContent: 'center', alignItems: 'center', width: 72,
+  machineName: { fontSize: 15, fontFamily: FONTS.uiBold, color: t.textPrimary, marginBottom: 2 },
+  gymName: { fontSize: 12, color: t.textMuted, marginBottom: 3, fontFamily: FONTS.ui },
+  machineBest: {
+    fontSize: 13, color: t.accentInk, fontFamily: FONTS.ui, fontWeight: '600',
+    fontVariant: ['tabular-nums'],
   },
-  deleteActionText: { color: '#fff', fontSize: 14, fontWeight: '600' },
-  emptyText: { color: t.textFaint, fontSize: 14, textAlign: 'center', lineHeight: 22, paddingVertical: 20 },
+  deleteAction: {
+    backgroundColor: '#E5484D', justifyContent: 'center', alignItems: 'center',
+    width: 64, borderRadius: 18, marginVertical: 4, marginRight: 2,
+  },
+  deleteActionText: { color: '#fff', fontSize: 12, fontFamily: FONTS.uiBold, letterSpacing: 0.3, marginTop: 3 },
+  emptyText: { color: t.textFaint, fontSize: 14, textAlign: 'center', lineHeight: 22, paddingVertical: 20, fontFamily: FONTS.ui },
   modalOverlay: {
-    flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end',
+    flex: 1, backgroundColor: 'rgba(10,9,8,0.5)', justifyContent: 'flex-end',
   },
   modalSheet: {
-    backgroundColor: t.card, borderTopLeftRadius: 20, borderTopRightRadius: 20,
-    paddingTop: 12,
+    backgroundColor: t.card,
+    borderTopLeftRadius: RADIUS.modal, borderTopRightRadius: RADIUS.modal,
+    paddingTop: 14,
   },
   modalHandle: {
-    width: 36, height: 4, borderRadius: 2, backgroundColor: t.border,
-    alignSelf: 'center', marginBottom: 8,
+    width: 38, height: 5, borderRadius: 3, backgroundColor: t.border,
+    alignSelf: 'center', marginBottom: 14,
   },
   modalHeader: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingVertical: 14,
+    paddingHorizontal: 18, paddingVertical: 14,
     borderBottomWidth: 1, borderColor: t.border,
   },
-  modalTitle: { fontSize: 16, fontWeight: '700', color: t.textPrimary },
+  modalTitle: { fontSize: 16, fontFamily: FONTS.uiBold, color: t.textPrimary },
   backBtn: { width: 60 },
-  backBtnText: { fontSize: 16, color: t.accent, fontWeight: '600' },
+  backBtnText: { fontSize: 14, color: t.accentInk, fontFamily: FONTS.uiBold },
   closeBtn: { width: 60, alignItems: 'flex-end' },
-  closeBtnText: { fontSize: 15, color: t.textMuted },
-  pickArrow: { fontSize: 18, color: t.textFaint },
+  closeBtnText: { fontSize: 14, color: t.textMuted, fontFamily: FONTS.ui },
+  pickArrow: { fontSize: 18, color: t.textFaint, fontFamily: FONTS.num },
   pickOption: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 20, paddingVertical: 14,
-    borderBottomWidth: 1, borderColor: t.border,
+    paddingHorizontal: 20, paddingVertical: 15,
+    borderBottomWidth: 1, borderColor: t.borderAlt,
   },
-  pickOptionDisabled: { backgroundColor: t.input },
-  pickMachine: { fontSize: 15, fontWeight: '600', color: t.textPrimary, marginBottom: 2 },
+  pickOptionDisabled: { backgroundColor: t.card2 },
+  pickMachine: { fontSize: 15, fontFamily: FONTS.uiBold, color: t.textPrimary, marginBottom: 2 },
   pickDisabledText: { color: t.textFaint },
-  alreadyTag: { fontSize: 12, color: t.textFaint, fontStyle: 'italic' },
+  alreadyTag: { fontSize: 12, color: t.textFaint, fontStyle: 'italic', fontFamily: FONTS.ui },
 });

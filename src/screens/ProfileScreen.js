@@ -11,12 +11,22 @@ import * as ImagePicker from 'expo-image-picker';
 import { fetchGymData, loadProfile, saveProfile, uploadAvatar, clearAllData } from '../storage';
 import { GYM_DATA_KEY } from '../queryClient';
 import { supabase } from '../supabase';
-import { useTheme } from '../ThemeContext';
+import { useTheme, RADIUS, FONTS, SCHEMES, SCHEME_LABELS } from '../ThemeContext';
 import { REGIONS, PROVINCE_NAMES, findProvinceByCity, getCitiesForProvince } from '../constants/regions';
 
+// 配色 swatch 用色（与 ThemeContext 内 light 模式 accent 对齐）
+const SCHEME_SWATCH = {
+  emerald: '#0E9F6E',
+  blue: '#1F77D6',
+  indigo: '#5145D6',
+  coral: '#E0552B',
+  pink: '#D6418A',
+  graphite: '#3A382F',
+};
+
 const THEME_OPTIONS = [
-  { value: 'light', label: '明亮' },
-  { value: 'dark', label: '深色' },
+  { value: 'light', label: '明亮', icon: 'sunny-outline' },
+  { value: 'dark', label: '深色', icon: 'moon-outline' },
 ];
 
 const PROFILE_FIELDS = [
@@ -90,6 +100,7 @@ export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
 
   const qc = useQueryClient();
+  const { scheme, setScheme } = useTheme();
   const { data: gymData } = useQuery({ queryKey: GYM_DATA_KEY, queryFn: fetchGymData });
   const gyms = gymData?.gyms || [];
   const records = gymData?.records || [];
@@ -346,6 +357,8 @@ export default function ProfileScreen() {
         {/* ── 外观 ── */}
         <View style={s.card}>
           <Text style={s.cardTitle}>外观</Text>
+
+          <Text style={s.subLabel}>主题</Text>
           <View style={s.themeRow}>
             {THEME_OPTIONS.map(opt => (
               <TouchableOpacity
@@ -356,10 +369,30 @@ export default function ProfileScreen() {
                 accessibilityLabel={opt.label}
                 accessibilityState={{ checked: mode === opt.value }}
               >
-                <Text style={[s.themeBtnText, mode === opt.value && s.themeBtnTextActive]}>
-                  {opt.label}
-                </Text>
+                <Ionicons
+                  name={opt.icon}
+                  size={20}
+                  color={mode === opt.value ? theme.textPrimary : theme.textMuted}
+                />
               </TouchableOpacity>
+            ))}
+          </View>
+
+          <Text style={[s.subLabel, { marginTop: 16 }]}>配色方案</Text>
+          <View style={s.schemeRow}>
+            {SCHEMES.map(key => (
+              <TouchableOpacity
+                key={key}
+                onPress={() => setScheme(key)}
+                accessibilityRole="button"
+                accessibilityLabel={SCHEME_LABELS[key]}
+                accessibilityState={{ selected: scheme === key }}
+                style={[
+                  s.schemeDot,
+                  { backgroundColor: SCHEME_SWATCH[key] },
+                  scheme === key && { borderColor: theme.textPrimary },
+                ]}
+              />
             ))}
           </View>
         </View>
@@ -646,102 +679,138 @@ const makeStyles = (t) => StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
     borderBottomLeftRadius: 40, borderBottomRightRadius: 40,
   },
-  nickname: { fontSize: 22, fontWeight: '800', color: t.textPrimary, marginBottom: 4 },
-  profileSub: { fontSize: 14, color: t.textMuted, marginBottom: 14 },
-  editBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 5,
-    backgroundColor: t.accentBg, borderRadius: 20,
-    paddingHorizontal: 14, paddingVertical: 7,
+  nickname: {
+    fontSize: 23, fontFamily: FONTS.uiExtra, color: t.textPrimary,
+    marginBottom: 4, letterSpacing: -0.4,
   },
-  editBtnText: { color: t.accent, fontSize: 13, fontWeight: '600' },
+  profileSub: { fontSize: 13.5, color: t.textMuted, marginBottom: 14, fontFamily: FONTS.ui },
+  editBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: t.accentBg, borderRadius: RADIUS.pill,
+    paddingHorizontal: 16, paddingVertical: 8,
+  },
+  editBtnText: { color: t.accentInk, fontSize: 13, fontFamily: FONTS.ui, fontWeight: '600' },
 
   // Highlights
-  highlightRow: { flexDirection: 'row', paddingHorizontal: 16, marginBottom: 10, alignItems: 'stretch', gap: 8 },
-  hlCard: { borderRadius: 16, paddingHorizontal: 16, paddingVertical: 18, flex: 1 },
+  highlightRow: { flexDirection: 'row', paddingHorizontal: 16, marginBottom: 10, alignItems: 'stretch', gap: 10 },
+  hlCard: { borderRadius: 20, paddingHorizontal: 16, paddingVertical: 15, flex: 1 },
   hlAccent: {
     backgroundColor: t.accent,
-    shadowColor: t.accent, shadowOpacity: 0.25, shadowRadius: 8,
-    shadowOffset: { width: 0, height: 3 }, elevation: 4,
+    shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 14,
+    shadowOffset: { width: 0, height: 8 }, elevation: 4,
   },
-  hlTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  hlLabel: { fontSize: 12, fontWeight: '600', color: 'rgba(255,255,255,0.85)' },
-  hlNum: { fontSize: 32, fontWeight: '900', color: '#FFFFFF', textAlign: 'center', marginBottom: 12 },
-  hlUnit: { fontSize: 11, color: 'rgba(255,255,255,0.7)' },
-  hlSub: { fontSize: 11, color: 'rgba(255,255,255,0.7)', textAlign: 'right' },
+  hlTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, opacity: 0.9 },
+  hlLabel: { fontSize: 11, fontFamily: FONTS.uiBold, color: t.onAccent, letterSpacing: 0.3 },
+  hlNum: {
+    fontSize: 27, fontFamily: FONTS.numBold, color: t.onAccent,
+    letterSpacing: -0.8, fontVariant: ['tabular-nums'],
+  },
+  hlUnit: { fontSize: 10, color: t.onAccent, opacity: 0.8 },
+  hlSub: { fontSize: 10.5, color: t.onAccent, opacity: 0.82, textAlign: 'right', marginTop: 6, fontFamily: FONTS.ui },
 
   // Stats 2×2
   statsCard: {
-    backgroundColor: t.card, borderRadius: 14, marginHorizontal: 16, marginBottom: 10,
-    overflow: 'hidden',
-    shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 1,
+    backgroundColor: t.card, borderRadius: RADIUS.card,
+    borderWidth: 1, borderColor: t.border,
+    marginHorizontal: 16, marginBottom: 10, overflow: 'hidden',
+    shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 }, elevation: 2,
   },
   statsRow: { flexDirection: 'row' },
   statCell: { flex: 1, alignItems: 'center', paddingVertical: 18 },
-  statDivV: { width: StyleSheet.hairlineWidth, backgroundColor: t.border },
-  statDivH: { height: StyleSheet.hairlineWidth, backgroundColor: t.border },
-  statNum: { fontSize: 26, fontWeight: '800', color: t.accent, marginBottom: 4 },
-  statLabel: { fontSize: 12, color: t.textMuted },
+  statDivV: { width: StyleSheet.hairlineWidth, backgroundColor: t.borderAlt },
+  statDivH: { height: StyleSheet.hairlineWidth, backgroundColor: t.borderAlt },
+  statNum: {
+    fontSize: 26, fontFamily: FONTS.num, color: t.accent,
+    marginBottom: 4, letterSpacing: -0.5, fontVariant: ['tabular-nums'],
+  },
+  statLabel: { fontSize: 11.5, color: t.textMuted, fontFamily: FONTS.ui },
 
   // Card
   card: {
-    backgroundColor: t.card, borderRadius: 14, padding: 16,
+    backgroundColor: t.card,
+    borderRadius: RADIUS.card, borderWidth: 1, borderColor: t.border,
+    padding: 18,
     marginHorizontal: 16, marginBottom: 10,
-    shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 1,
+    shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 }, elevation: 2,
   },
-  cardTitle: { fontSize: 13, fontWeight: '700', color: t.textMuted, marginBottom: 14, letterSpacing: 0.6 },
+  cardTitle: {
+    fontSize: 11.5, fontFamily: FONTS.uiBold, color: t.textMuted,
+    marginBottom: 14, letterSpacing: 1.6, textTransform: 'uppercase',
+  },
 
   // Gym rankings
   gymRow: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: t.border,
+    flexDirection: 'row', alignItems: 'center', gap: 13,
+    paddingVertical: 11, borderTopWidth: 1, borderColor: t.borderAlt,
   },
   rankBadge: {
-    width: 26, height: 26, borderRadius: 13,
-    backgroundColor: t.input, alignItems: 'center', justifyContent: 'center', marginRight: 12,
+    width: 28, height: 28, borderRadius: 9,
+    backgroundColor: t.card2, borderWidth: 1, borderColor: t.border,
+    alignItems: 'center', justifyContent: 'center',
   },
-  rankBadgeGold: { backgroundColor: t.goldBg, borderWidth: 1, borderColor: t.goldBorder },
-  rankNum: { fontSize: 12, fontWeight: '700', color: t.textFaint },
+  rankBadgeGold: { backgroundColor: t.goldBg, borderColor: t.goldBorder },
+  rankNum: { fontSize: 13, fontFamily: FONTS.num, color: t.textMuted },
   rankNumGold: { color: t.gold },
   gymInfo: { flex: 1 },
-  gymName: { fontSize: 15, fontWeight: '600', color: t.textPrimary, marginBottom: 2 },
-  gymSub: { fontSize: 12, color: t.textMuted },
-  gymVol: { fontSize: 14, fontWeight: '700', color: t.accent },
+  gymName: { fontSize: 14.5, fontFamily: FONTS.uiBold, color: t.textPrimary, marginBottom: 1 },
+  gymSub: { fontSize: 11.5, color: t.textMuted, fontFamily: FONTS.ui },
+  gymVol: {
+    fontSize: 15, fontFamily: FONTS.num, color: t.accentInk,
+    fontVariant: ['tabular-nums'],
+  },
 
   // Theme
-  themeRow: { flexDirection: 'row', gap: 8 },
-  themeBtn: {
-    flex: 1, minHeight: 44, borderRadius: 8, alignItems: 'center', justifyContent: 'center',
-    backgroundColor: t.input, borderWidth: 1.5, borderColor: 'transparent',
+  subLabel: { fontSize: 12.5, color: t.textMuted, fontFamily: FONTS.ui, fontWeight: '600', marginBottom: 10 },
+  themeRow: {
+    flexDirection: 'row', gap: 6,
+    backgroundColor: t.card2, padding: 4, borderRadius: 13,
+    borderWidth: 1, borderColor: t.border,
   },
-  themeBtnActive: { borderColor: t.accent, backgroundColor: t.accentBg },
-  themeBtnText: { fontSize: 14, fontWeight: '500', color: t.textMuted },
-  themeBtnTextActive: { color: t.accent, fontWeight: '700' },
+  themeBtn: {
+    flex: 1, height: 40, borderRadius: 10,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: 'transparent',
+  },
+  themeBtnActive: {
+    backgroundColor: t.card,
+    shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 }, elevation: 1,
+  },
+  schemeRow: { flexDirection: 'row', gap: 12, flexWrap: 'wrap' },
+  schemeDot: {
+    width: 34, height: 34, borderRadius: 11,
+    borderWidth: 2, borderColor: 'transparent',
+    shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 }, elevation: 1,
+  },
 
   // Bottom buttons
   dangerBtn: {
-    borderWidth: 1, borderColor: '#FFB3B3', borderRadius: 12,
-    paddingVertical: 14, alignItems: 'center',
-    marginHorizontal: 16, marginTop: 8,
+    borderWidth: 1, borderColor: '#F0C0C0', borderRadius: RADIUS.btn,
+    paddingVertical: 16, alignItems: 'center',
+    marginHorizontal: 16, marginTop: 12,
   },
-  dangerBtnText: { color: '#FF6B6B', fontSize: 15, fontWeight: '600' },
+  dangerBtnText: { color: '#E5484D', fontSize: 15, fontFamily: FONTS.uiBold },
   logoutBtn: {
-    marginHorizontal: 16, marginTop: 8, marginBottom: 32,
-    padding: 16, borderRadius: 12,
-    backgroundColor: t.card, alignItems: 'center',
+    marginHorizontal: 16, marginTop: 10, marginBottom: 32,
+    paddingVertical: 16, borderRadius: RADIUS.btn,
+    backgroundColor: 'transparent', alignItems: 'center',
     borderWidth: 1, borderColor: t.border,
   },
-  logoutBtnText: { color: t.textSecondary, fontSize: 15, fontWeight: '600' },
+  logoutBtnText: { color: t.textSecondary, fontSize: 15, fontFamily: FONTS.uiBold },
 
   // Modal
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(10,9,8,0.5)', justifyContent: 'flex-end' },
   modalSheet: {
     backgroundColor: t.bg,
-    borderTopLeftRadius: 22, borderTopRightRadius: 22,
+    borderTopLeftRadius: RADIUS.modal, borderTopRightRadius: RADIUS.modal,
     padding: 20, maxHeight: '92%',
   },
   modalHandle: {
-    width: 36, height: 4, borderRadius: 2, backgroundColor: t.border,
-    alignSelf: 'center', marginBottom: 16,
+    width: 38, height: 5, borderRadius: 3, backgroundColor: t.border,
+    alignSelf: 'center', marginBottom: 14,
   },
   modalTitleRow: {
     flexDirection: 'row', alignItems: 'center',

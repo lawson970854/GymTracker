@@ -6,7 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import { fetchGymData, today } from '../storage';
 import { GYM_DATA_KEY } from '../queryClient';
 import InteractiveLineChart from '../components/InteractiveLineChart';
-import { useTheme } from '../ThemeContext';
+import { useTheme, RADIUS, FONTS } from '../ThemeContext';
 
 const W = Dimensions.get('window').width;
 
@@ -153,55 +153,82 @@ const makeStyles = (t) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: t.bg },
   scroll: { flex: 1 },
   content: { padding: 16, paddingBottom: 48 },
-  pageTitle: { fontSize: 28, fontWeight: '800', color: t.textPrimary, marginBottom: 16 },
+  pageTitle: {
+    fontSize: 30, fontFamily: FONTS.uiExtra, color: t.textPrimary,
+    marginBottom: 16, letterSpacing: -0.6,
+  },
 
   pickerCard: {
-    backgroundColor: t.card, borderRadius: 12, padding: 12,
-    marginBottom: 12, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 1,
+    backgroundColor: t.card,
+    borderRadius: RADIUS.card, borderWidth: 1, borderColor: t.border,
+    padding: 14, marginBottom: 12,
+    shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 }, elevation: 2,
     overflow: 'hidden',
   },
 
   emptyCard: {
-    backgroundColor: t.card, borderRadius: 12, padding: 40, alignItems: 'center',
-    marginBottom: 12,
+    backgroundColor: t.card,
+    borderRadius: RADIUS.card, borderWidth: 1, borderColor: t.border,
+    padding: 40, alignItems: 'center', marginBottom: 12,
   },
-  emptyText: { color: t.textFaint, fontSize: 16 },
+  emptyText: { color: t.textFaint, fontSize: 15, fontFamily: FONTS.ui },
 
+  // Hero fill 当日总训练量
   summaryCard: {
-    backgroundColor: t.accent, borderRadius: 16,
-    paddingHorizontal: 16, paddingVertical: 18,
+    backgroundColor: t.accent,
+    borderRadius: RADIUS.lg,
+    paddingHorizontal: 20, paddingVertical: 20,
     marginBottom: 12,
+    shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 16,
+    shadowOffset: { width: 0, height: 10 }, elevation: 3,
   },
-  summaryTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  summaryLabel: { fontSize: 12, fontWeight: '600', color: 'rgba(255,255,255,0.85)' },
-  summaryUnit: { fontSize: 11, color: 'rgba(255,255,255,0.7)' },
-  summaryValue: { fontSize: 36, fontWeight: '900', color: '#fff', textAlign: 'center', marginBottom: 12 },
-  summaryCount: { fontSize: 11, color: 'rgba(255,255,255,0.7)', textAlign: 'right' },
-  unitSuffix: { fontSize: 14, fontWeight: '400', color: 'rgba(255,255,255,0.7)' },
+  summaryTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+  summaryLabel: {
+    fontSize: 12, fontFamily: FONTS.uiBold, color: t.onAccent,
+    letterSpacing: 0.5, opacity: 0.9,
+  },
+  summaryUnit: { fontSize: 11, color: t.onAccent, opacity: 0.8 },
+  summaryValue: {
+    fontSize: 50, fontFamily: FONTS.numBold, color: t.onAccent,
+    textAlign: 'center', marginBottom: 6, letterSpacing: -1.5,
+    fontVariant: ['tabular-nums'],
+  },
+  summaryCount: { fontSize: 11.5, color: t.onAccent, opacity: 0.82, textAlign: 'right', fontFamily: FONTS.ui },
+  unitSuffix: { fontSize: 14, color: t.onAccent, opacity: 0.7, fontFamily: FONTS.ui },
 
   gymCard: {
-    backgroundColor: t.card, borderRadius: 12, padding: 14,
-    marginBottom: 10, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 1,
+    backgroundColor: t.card,
+    borderRadius: RADIUS.card, borderWidth: 1, borderColor: t.border,
+    padding: 18, marginBottom: 10,
+    shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 }, elevation: 2,
   },
   gymTitle: {
-    fontSize: 12, fontWeight: '700', color: t.accent,
-    letterSpacing: 0.4, marginBottom: 10, textTransform: 'uppercase',
+    fontSize: 12, fontFamily: FONTS.uiBold, color: t.accentInk,
+    letterSpacing: 1, marginBottom: 10, textTransform: 'uppercase',
   },
 
   machineBlock: { paddingTop: 10 },
-  machineBlockBorder: { borderTopWidth: 1, borderColor: t.border, marginTop: 10 },
-  machineName: { fontSize: 15, fontWeight: '700', color: t.textPrimary, marginBottom: 8 },
+  machineBlockBorder: { borderTopWidth: 1, borderColor: t.borderAlt, marginTop: 10 },
+  machineName: { fontSize: 15, fontFamily: FONTS.uiBold, color: t.textPrimary, marginBottom: 8 },
 
   recRow: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingVertical: 5, borderTopWidth: 1, borderColor: t.borderAlt,
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', gap: 10,
+    paddingVertical: 5,
   },
-  recDetail: { fontSize: 13, color: t.textSecondary },
-  recVol: { fontSize: 13, fontWeight: '700', color: t.accent },
+  recDetail: { fontSize: 12.5, color: t.textSecondary, fontFamily: FONTS.ui, flexShrink: 1 },
+  recVol: {
+    fontSize: 13, fontFamily: FONTS.num, color: t.accentInk,
+    fontVariant: ['tabular-nums'],
+  },
 
   chartCard: {
-    backgroundColor: t.card, borderRadius: 12, padding: 16,
-    marginTop: 4, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 1,
+    backgroundColor: t.card,
+    borderRadius: RADIUS.card, borderWidth: 1, borderColor: t.border,
+    padding: 18, paddingHorizontal: 16, marginTop: 4,
+    shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 }, elevation: 2,
   },
-  chartTitle: { fontSize: 15, fontWeight: '700', color: t.textPrimary, marginBottom: 8 },
+  chartTitle: { fontSize: 14, fontFamily: FONTS.uiBold, color: t.textPrimary, marginBottom: 8 },
 });

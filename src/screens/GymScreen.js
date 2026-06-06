@@ -10,7 +10,7 @@ import * as Haptics from 'expo-haptics';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchGymData, addMachine as dbAddMachine, deleteMachine as dbDeleteMachine, addCategory as dbAddCategory, updateMachineName as dbUpdateMachineName, getBestRecord } from '../storage';
 import { GYM_DATA_KEY } from '../queryClient';
-import { useTheme } from '../ThemeContext';
+import { useTheme, RADIUS, FONTS } from '../ThemeContext';
 import RenameModal from '../components/RenameModal';
 
 export default function GymScreen({ navigation, route }) {
@@ -169,20 +169,22 @@ export default function GymScreen({ navigation, route }) {
                 renderRightActions={() => (
                   <View style={s.swipeActions}>
                     <TouchableOpacity
-                      style={s.editAction}
+                      style={[s.swipeAct, s.swipeEdit]}
                       onPress={() => setRenamingMachine(item)}
                       accessibilityLabel={`重命名${item.name}`}
                       accessibilityRole="button"
                     >
-                      <Text style={s.editActionText}>编辑</Text>
+                      <Ionicons name="pencil" size={18} color="#fff" />
+                      <Text style={s.swipeActText}>编辑</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                      style={s.deleteAction}
+                      style={[s.swipeAct, s.swipeDel]}
                       onPress={() => deleteMachine(item)}
                       accessibilityLabel={`删除${item.name}`}
                       accessibilityRole="button"
                     >
-                      <Text style={s.deleteActionText}>删除</Text>
+                      <Ionicons name="trash-outline" size={18} color="#fff" />
+                      <Text style={s.swipeActText}>删除</Text>
                     </TouchableOpacity>
                   </View>
                 )}
@@ -196,9 +198,12 @@ export default function GymScreen({ navigation, route }) {
                   accessibilityLabel={item.name}
                   accessibilityHint="进入器械训练记录"
                 >
-                  <View style={{ flex: 1 }}>
-                    <Text style={s.machineName}>{item.name}</Text>
-                    <Text style={s.best}>{bestFor(item.id)}</Text>
+                  <View style={s.rowIcon}>
+                    <Ionicons name="barbell-outline" size={22} color={theme.accent} />
+                  </View>
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text style={s.machineName} numberOfLines={1}>{item.name}</Text>
+                    <Text style={s.best} numberOfLines={1}>{bestFor(item.id)}</Text>
                   </View>
                   <Ionicons name="chevron-forward" size={18} color={theme.textFaint} />
                 </TouchableOpacity>
@@ -328,84 +333,104 @@ export default function GymScreen({ navigation, route }) {
 const makeStyles = (t) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: t.bg },
   container: { flex: 1, padding: 16 },
-  swipeActions: { flexDirection: 'row', marginBottom: 10 },
-  editAction: {
-    backgroundColor: '#5B9BD5', justifyContent: 'center', alignItems: 'center',
-    width: 64,
+  swipeActions: { flexDirection: 'row', marginBottom: 10, gap: 9, paddingRight: 2 },
+  swipeAct: {
+    width: 64, borderRadius: 18,
+    alignItems: 'center', justifyContent: 'center', gap: 5,
   },
-  editActionText: { color: '#fff', fontSize: 14, fontWeight: '600' },
-  deleteAction: {
-    backgroundColor: '#FF3B30', justifyContent: 'center', alignItems: 'center',
-    width: 64,
-    borderTopRightRadius: 12, borderBottomRightRadius: 12,
-  },
-  deleteActionText: { color: '#fff', fontSize: 14, fontWeight: '600' },
+  swipeEdit: { backgroundColor: '#5B8DEF' },
+  swipeDel: { backgroundColor: '#E5484D' },
+  swipeActText: { color: '#fff', fontSize: 12, fontFamily: FONTS.uiBold, letterSpacing: 0.3 },
   card: {
-    backgroundColor: t.card, borderRadius: 12, padding: 16,
-    marginBottom: 10, flexDirection: 'row', alignItems: 'center',
-    shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 1,
+    backgroundColor: t.card,
+    borderRadius: RADIUS.card,
+    borderWidth: 1, borderColor: t.border,
+    padding: 16, paddingLeft: 18,
+    marginBottom: 10, flexDirection: 'row', alignItems: 'center', gap: 14,
+    shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 }, elevation: 2,
   },
-  machineName: { fontSize: 16, fontWeight: '600', color: t.textPrimary, marginBottom: 3 },
-  best: { fontSize: 13, color: t.accent },
+  rowIcon: {
+    width: 44, height: 44, borderRadius: 14,
+    backgroundColor: t.accentBg,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  machineName: {
+    fontSize: 16.5, fontFamily: FONTS.uiBold, color: t.textPrimary,
+    marginBottom: 3, letterSpacing: -0.2,
+  },
+  best: {
+    fontSize: 12.5, color: t.accentInk, fontFamily: FONTS.ui, fontWeight: '600',
+    fontVariant: ['tabular-nums'],
+  },
   emptyContainer: { flex: 1, justifyContent: 'center' },
   empty: { textAlign: 'center', color: t.textFaint, fontSize: 15, lineHeight: 24, marginTop: 60 },
   addCard: {
-    backgroundColor: t.card, borderRadius: 12, padding: 12, gap: 10,
-    shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 6, elevation: 2,
+    backgroundColor: t.card, borderRadius: RADIUS.card,
+    borderWidth: 1, borderColor: t.border,
+    padding: 14, gap: 12,
+    shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 }, elevation: 2,
   },
   addInput: {
-    fontSize: 16, paddingVertical: 8, paddingHorizontal: 4,
-    color: t.textPrimary,
-    borderBottomWidth: 1, borderBottomColor: t.divider || 'rgba(0,0,0,0.08)',
+    fontSize: 15, paddingVertical: 6, paddingHorizontal: 2,
+    color: t.textPrimary, fontFamily: FONTS.ui,
+    borderBottomWidth: 1, borderBottomColor: t.divider,
   },
   categoryChip: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     alignSelf: 'flex-start',
-    paddingHorizontal: 10, paddingVertical: 6,
-    borderRadius: 16,
-    backgroundColor: t.bg,
-    borderWidth: 1, borderColor: t.divider || 'rgba(0,0,0,0.1)',
+    paddingHorizontal: 14, paddingVertical: 8,
+    borderRadius: RADIUS.pill,
+    backgroundColor: t.card2,
+    borderWidth: 1, borderColor: t.border,
   },
-  categoryChipText: { fontSize: 13, color: t.textMuted },
+  categoryChipText: { fontSize: 13, color: t.textMuted, fontFamily: FONTS.ui, fontWeight: '600' },
   btnRow: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8 },
   confirmBtn: {
-    backgroundColor: t.accent, borderRadius: 8,
+    backgroundColor: t.accent, borderRadius: 10,
     paddingHorizontal: 18, minHeight: 40, justifyContent: 'center',
   },
-  confirmText: { color: '#fff', fontWeight: '600', fontSize: 14 },
+  confirmText: { color: t.onAccent, fontFamily: FONTS.uiBold, fontSize: 13 },
   cancelBtn: { minHeight: 40, justifyContent: 'center', paddingHorizontal: 12 },
-  cancelText: { color: t.textMuted, fontSize: 14 },
+  cancelText: { color: t.textMuted, fontSize: 13, fontFamily: FONTS.ui },
   // 分类选择 Modal
   modalBackdrop: {
-    flex: 1, backgroundColor: 'rgba(0,0,0,0.4)',
+    flex: 1, backgroundColor: 'rgba(10,9,8,0.5)',
     justifyContent: 'center', alignItems: 'center', padding: 20,
   },
   modalCard: {
-    width: '100%', maxWidth: 400, backgroundColor: t.card, borderRadius: 14, padding: 18,
+    width: '100%', maxWidth: 400, backgroundColor: t.card,
+    borderRadius: RADIUS.lg, borderWidth: 1, borderColor: t.border,
+    padding: 20,
   },
-  modalTitle: { fontSize: 16, fontWeight: '600', color: t.textPrimary, marginBottom: 12 },
-  modalEmpty: { textAlign: 'center', color: t.textFaint, fontSize: 14, paddingVertical: 18 },
+  modalTitle: {
+    fontSize: 16, fontFamily: FONTS.uiBold, color: t.textPrimary, marginBottom: 14,
+  },
+  modalEmpty: { textAlign: 'center', color: t.textFaint, fontSize: 14, paddingVertical: 18, fontFamily: FONTS.ui },
   modalItem: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingVertical: 12, paddingHorizontal: 4,
-    borderBottomWidth: 1, borderBottomColor: t.divider || 'rgba(0,0,0,0.06)',
+    paddingVertical: 13, paddingHorizontal: 4,
+    borderBottomWidth: 1, borderBottomColor: t.borderAlt,
   },
-  modalItemText: { fontSize: 15, color: t.textPrimary },
+  modalItemText: { fontSize: 15, color: t.textPrimary, fontFamily: FONTS.ui, fontWeight: '600' },
   modalNewRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12,
+    flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 14,
   },
   modalInput: {
-    flex: 1, fontSize: 14, paddingHorizontal: 10, paddingVertical: 10,
-    backgroundColor: t.bg, borderRadius: 8, color: t.textPrimary,
+    flex: 1, fontSize: 14, paddingHorizontal: 12, paddingVertical: 12,
+    backgroundColor: t.card2, borderRadius: RADIUS.input, color: t.textPrimary,
+    fontFamily: FONTS.ui,
+    borderWidth: 1, borderColor: t.border,
   },
   modalNewBtn: {
-    backgroundColor: t.accent, borderRadius: 8,
-    paddingHorizontal: 14, paddingVertical: 10,
+    backgroundColor: t.accent, borderRadius: 10,
+    paddingHorizontal: 14, paddingVertical: 12,
   },
-  modalNewBtnText: { color: '#fff', fontSize: 14, fontWeight: '600' },
+  modalNewBtnText: { color: t.onAccent, fontSize: 14, fontFamily: FONTS.uiBold },
   addBtn: {
-    backgroundColor: t.accent, borderRadius: 12,
-    paddingVertical: 15, alignItems: 'center', marginTop: 4,
+    backgroundColor: t.accent, borderRadius: RADIUS.btn,
+    paddingVertical: 16, alignItems: 'center', marginTop: 4,
   },
-  addBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  addBtnText: { color: t.onAccent, fontSize: 16, fontFamily: FONTS.uiBold },
 });

@@ -5,6 +5,7 @@ import {
   KeyboardAvoidingView, ActionSheetIOS,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchGymData, addRecord as dbAddRecord, updateRecord as dbUpdateRecord, deleteRecord as dbDeleteRecord, calcVolume, getBestRecord, today } from '../storage';
@@ -12,7 +13,7 @@ import { GYM_DATA_KEY } from '../queryClient';
 import SetInput from '../components/SetInput';
 import TrophyModal from '../components/TrophyModal';
 import InteractiveLineChart from '../components/InteractiveLineChart';
-import { useTheme } from '../ThemeContext';
+import { useTheme, RADIUS, FONTS } from '../ThemeContext';
 
 const W = Dimensions.get('window').width;
 
@@ -289,8 +290,13 @@ export default function MachineScreen({ route }) {
 
         {bestRecord && (
           <View style={s.bestCard}>
-            <Text style={s.bestLabel} accessible={false}>🏆 历史最佳</Text>
-            <Text style={s.bestVolume}>{bestRecord.volume}<Text style={s.unitSuffix}> 千克·次</Text></Text>
+            <View style={s.bestTop}>
+              <View style={s.bestBadge}>
+                <Ionicons name="trophy" size={16} color="#fff" />
+              </View>
+              <Text style={s.bestLabel} accessible={false}>历史最佳</Text>
+            </View>
+            <Text style={s.bestVolume}>{bestRecord.volume.toLocaleString()}<Text style={s.unitSuffix}> 千克·次</Text></Text>
             <Text style={s.bestDetail}>
               {bestRecord.weight} 千克 × {bestRecord.sets.length}组（{bestRecord.sets.join('/')} 次） · {bestRecord.date}
             </Text>
@@ -358,10 +364,10 @@ export default function MachineScreen({ route }) {
         {records.length > 0 && (
           <View style={s.historyCard}>
             <Text style={s.sectionTitle}>历史记录</Text>
-            {records.slice(0, 20).map(r => (
+            {records.slice(0, 20).map((r, i) => (
               <TouchableOpacity
                 key={r.id}
-                style={s.histRow}
+                style={[s.histRow, i === 0 && { borderTopWidth: 0 }]}
                 onPress={() => showActions(r)}
                 accessibilityRole="button"
                 accessibilityLabel={`${r.date}，${r.weight}千克，${r.sets?.join('/')}次，训练量${r.volume}千克·次，点击查看操作`}
@@ -427,104 +433,175 @@ const makeStyles = (t) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: t.bg },
   scroll: { flex: 1 },
   content: { padding: 16, paddingBottom: 80 },
+  // 历史最佳：淡金渐变（用 backgroundColor 模拟，避免引入 LinearGradient 依赖）
   bestCard: {
-    backgroundColor: t.goldBg, borderRadius: 12, padding: 16, marginBottom: 12,
+    backgroundColor: t.goldBg,
+    borderRadius: RADIUS.lg,
     borderWidth: 1, borderColor: t.goldBorder,
+    padding: 18, marginBottom: 12,
+    shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 }, elevation: 2,
   },
-  bestLabel: { fontSize: 13, color: t.gold, fontWeight: '600', marginBottom: 4 },
-  bestVolume: { fontSize: 28, fontWeight: '800', color: t.textPrimary, marginBottom: 2 },
-  bestDetail: { fontSize: 13, color: t.textMuted },
-  unitSuffix: { fontSize: 14, fontWeight: '400', color: t.textMuted },
+  bestTop: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
+  bestBadge: {
+    width: 30, height: 30, borderRadius: 9,
+    backgroundColor: t.gold, alignItems: 'center', justifyContent: 'center',
+  },
+  bestLabel: {
+    fontSize: 11.5, color: t.gold, fontFamily: FONTS.uiBold,
+    letterSpacing: 1.4, textTransform: 'uppercase',
+  },
+  bestVolume: {
+    fontSize: 44, fontFamily: FONTS.numBold, color: t.textPrimary,
+    letterSpacing: -1.5, lineHeight: 46,
+    fontVariant: ['tabular-nums'],
+  },
+  bestDetail: {
+    fontSize: 12.5, color: t.textMuted, marginTop: 8,
+    fontVariant: ['tabular-nums'], fontFamily: FONTS.ui,
+  },
+  unitSuffix: { fontSize: 15, fontWeight: '500', color: t.textMuted, fontFamily: FONTS.ui },
+  // 统计三宫格：统一字号 20
   statsRow: { flexDirection: 'row', gap: 10, marginBottom: 12 },
   statCard: {
-    flex: 1, backgroundColor: t.card, borderRadius: 12, padding: 14, alignItems: 'center',
-    shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 1,
+    flex: 1, backgroundColor: t.card,
+    borderRadius: 18, borderWidth: 1, borderColor: t.border,
+    padding: 15, paddingHorizontal: 10, alignItems: 'center',
+    shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 }, elevation: 2,
   },
-  statNum: { fontSize: 17, fontWeight: '800', color: t.accent, marginBottom: 2 },
-  statLabel: { fontSize: 12, color: t.textMuted },
+  statNum: {
+    fontSize: 20, lineHeight: 22, fontFamily: FONTS.num,
+    color: t.accent, letterSpacing: -0.5,
+    fontVariant: ['tabular-nums'],
+  },
+  statLabel: {
+    fontSize: 11, color: t.textMuted, marginTop: 4,
+    fontFamily: FONTS.ui, letterSpacing: 0.3,
+  },
   formCard: {
-    backgroundColor: t.card, borderRadius: 12, padding: 16,
-    marginBottom: 12, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 1,
+    backgroundColor: t.card,
+    borderRadius: RADIUS.card, borderWidth: 1, borderColor: t.border,
+    padding: 18, marginBottom: 12,
+    shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 }, elevation: 2,
   },
-  sectionTitle: { fontSize: 15, fontWeight: '700', color: t.textPrimary, marginBottom: 12 },
+  sectionTitle: {
+    fontSize: 11.5, fontFamily: FONTS.uiBold, color: t.textMuted,
+    marginBottom: 14, letterSpacing: 1.6, textTransform: 'uppercase',
+  },
   dateRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     minHeight: 44,
   },
-  fieldLabel: { fontSize: 14, color: t.textSecondary, marginBottom: 6 },
+  fieldLabel: {
+    fontSize: 12.5, color: t.textMuted, fontFamily: FONTS.ui,
+    fontWeight: '600', letterSpacing: 0.3, marginBottom: 8,
+  },
   weightBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    borderWidth: 1, borderColor: t.border, borderRadius: 8,
-    paddingHorizontal: 12, minHeight: 44, backgroundColor: t.input,
+    borderWidth: 1, borderColor: t.border, borderRadius: RADIUS.input,
+    paddingHorizontal: 14, minHeight: 52, backgroundColor: t.card2,
   },
-  weightVal: { fontSize: 22, fontWeight: '700', color: t.textPrimary },
+  weightVal: {
+    fontSize: 24, fontFamily: FONTS.num, color: t.textPrimary,
+    fontVariant: ['tabular-nums'],
+  },
   weightArrow: { fontSize: 14, color: t.textFaint },
-  wPickerRoot: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' },
+  // Picker modal：纯色遮罩 rgba(10,9,8,0.5)
+  wPickerRoot: {
+    flex: 1, backgroundColor: 'rgba(10,9,8,0.5)',
+    justifyContent: 'center', alignItems: 'center',
+  },
   wPickerBox: {
-    backgroundColor: t.card, borderRadius: 16, width: 260, overflow: 'hidden',
-    shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 12, elevation: 8,
+    backgroundColor: t.card,
+    borderRadius: RADIUS.lg, borderWidth: 1, borderColor: t.border,
+    width: 260, overflow: 'hidden',
+    shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 16,
+    shadowOffset: { width: 0, height: 12 }, elevation: 8,
   },
   wPickerTitle: {
-    fontSize: 15, fontWeight: '700', color: t.textPrimary,
-    textAlign: 'center', paddingVertical: 14,
+    fontSize: 14, fontFamily: FONTS.uiBold, color: t.textPrimary,
+    textAlign: 'center', paddingVertical: 15,
     borderBottomWidth: 1, borderColor: t.border,
   },
   wOption: {
     height: 48, paddingHorizontal: 20,
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    borderBottomWidth: 1, borderColor: t.borderAlt,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
   },
   wOptionSelected: { backgroundColor: t.accentBg },
-  wOptionText: { fontSize: 16, color: t.textSecondary },
-  wOptionTextSelected: { color: t.accent, fontWeight: '700' },
-  wCheck: { fontSize: 16, color: t.accent },
-  preview: { fontSize: 13, color: t.accent, fontWeight: '600', marginTop: 10, textAlign: 'center' },
-  saveBtn: {
-    backgroundColor: t.accent, borderRadius: 12,
-    paddingVertical: 14, alignItems: 'center', marginTop: 16,
+  wOptionText: {
+    fontSize: 17, color: t.textSecondary, fontFamily: FONTS.num,
+    fontVariant: ['tabular-nums'],
   },
-  saveBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  wOptionTextSelected: { color: t.accentInk, fontFamily: FONTS.numBold },
+  wCheck: { fontSize: 16, color: t.accent },
+  preview: {
+    fontSize: 12.5, color: t.accentInk, fontWeight: '600',
+    marginTop: 12, textAlign: 'center', fontFamily: FONTS.ui,
+    fontVariant: ['tabular-nums'],
+  },
+  saveBtn: {
+    backgroundColor: t.accent, borderRadius: RADIUS.btn,
+    paddingVertical: 16, alignItems: 'center', marginTop: 12,
+  },
+  saveBtnText: { color: t.onAccent, fontSize: 16, fontFamily: FONTS.uiBold },
   chartCard: {
-    backgroundColor: t.card, borderRadius: 12, padding: 16,
-    marginBottom: 12, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 1,
+    backgroundColor: t.card,
+    borderRadius: RADIUS.card, borderWidth: 1, borderColor: t.border,
+    padding: 18, paddingHorizontal: 16, marginBottom: 12,
+    shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 }, elevation: 2,
   },
   historyCard: {
-    backgroundColor: t.card, borderRadius: 12, padding: 16,
-    shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 1,
+    backgroundColor: t.card,
+    borderRadius: RADIUS.card, borderWidth: 1, borderColor: t.border,
+    padding: 18,
+    shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 }, elevation: 2,
   },
   histRow: {
-    paddingVertical: 12, paddingRight: 12,
-    borderBottomWidth: 1, borderColor: t.border,
-    backgroundColor: t.card,
+    paddingVertical: 13,
+    borderTopWidth: 1, borderTopColor: t.borderAlt,
   },
   histTop: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline',
     marginBottom: 4,
   },
-  histDate: { fontSize: 13, color: t.textMuted },
-  histDetail: { fontSize: 13, color: t.textSecondary },
-  histVol: { fontSize: 14, fontWeight: '700', color: t.accent },
+  histDate: {
+    fontSize: 12.5, color: t.textMuted,
+    fontVariant: ['tabular-nums'], fontFamily: FONTS.ui,
+  },
+  histDetail: { fontSize: 13, color: t.textSecondary, fontFamily: FONTS.ui },
+  histVol: {
+    fontSize: 14.5, fontFamily: FONTS.num,
+    color: t.accentInk, fontVariant: ['tabular-nums'],
+  },
   editOverlay: {
-    flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end',
+    flex: 1, backgroundColor: 'rgba(10,9,8,0.5)', justifyContent: 'flex-end',
   },
   editSheet: {
-    backgroundColor: t.card, borderTopLeftRadius: 20, borderTopRightRadius: 20,
+    backgroundColor: t.card,
+    borderTopLeftRadius: RADIUS.modal, borderTopRightRadius: RADIUS.modal,
     padding: 20,
   },
   editHandle: {
-    width: 36, height: 4, borderRadius: 2, backgroundColor: t.border,
-    alignSelf: 'center', marginBottom: 16,
+    width: 38, height: 5, borderRadius: 3, backgroundColor: t.border,
+    alignSelf: 'center', marginBottom: 14,
   },
-  editTitle: { fontSize: 17, fontWeight: '700', color: t.textPrimary, marginBottom: 16, textAlign: 'center' },
+  editTitle: {
+    fontSize: 17, fontFamily: FONTS.uiExtra, color: t.textPrimary,
+    marginBottom: 14, textAlign: 'center',
+  },
   editActions: { flexDirection: 'row', gap: 12, marginTop: 20 },
   editCancelBtn: {
-    flex: 1, borderWidth: 1, borderColor: t.border, borderRadius: 12,
-    paddingVertical: 13, alignItems: 'center',
+    flex: 1, borderWidth: 1, borderColor: t.border, borderRadius: RADIUS.btn,
+    paddingVertical: 14, alignItems: 'center', justifyContent: 'center',
   },
-  editCancelText: { fontSize: 15, color: t.textMuted, fontWeight: '600' },
+  editCancelText: { fontSize: 15, color: t.textMuted, fontFamily: FONTS.uiBold },
   editSaveBtn: {
-    flex: 2, backgroundColor: t.accent, borderRadius: 12,
-    paddingVertical: 13, alignItems: 'center',
+    flex: 2, backgroundColor: t.accent, borderRadius: RADIUS.btn,
+    paddingVertical: 14, alignItems: 'center', justifyContent: 'center',
   },
-  editSaveText: { fontSize: 15, color: '#fff', fontWeight: '700' },
+  editSaveText: { fontSize: 15, color: t.onAccent, fontFamily: FONTS.uiBold },
 });

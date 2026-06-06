@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { View, Text, TouchableOpacity, Modal, FlatList, StyleSheet } from 'react-native';
-import { useTheme } from '../ThemeContext';
+import { useTheme, RADIUS, FONTS } from '../ThemeContext';
 
 const REP_OPTIONS = Array.from({ length: 50 }, (_, i) => i + 1);
 
@@ -112,47 +112,54 @@ export default function SetInput({ sets, onChange }) {
 
 const makeStyles = (t) => StyleSheet.create({
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
-  label: { fontSize: 15, fontWeight: '600', color: t.textPrimary },
+  label: { fontSize: 12.5, fontFamily: FONTS.ui, fontWeight: '600', color: t.textMuted, letterSpacing: 0.3 },
   counter: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   btn: {
-    width: 44, height: 44, borderRadius: 22,
+    width: 34, height: 34, borderRadius: 17,
     backgroundColor: t.accentBg, justifyContent: 'center', alignItems: 'center',
   },
-  btnText: { fontSize: 20, color: t.accent, fontWeight: '700' },
-  setCount: { fontSize: 15, fontWeight: '600', color: t.textPrimary, minWidth: 32, textAlign: 'center' },
-  row: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
-  setLabel: { width: 52, fontSize: 14, color: t.textSecondary },
-  repBtn: {
-    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    borderWidth: 1, borderColor: t.border, borderRadius: 8,
-    paddingHorizontal: 12, minHeight: 44,
-    backgroundColor: t.input,
+  btnText: { fontSize: 18, color: t.accent, fontFamily: FONTS.num },
+  setCount: {
+    fontSize: 14, fontFamily: FONTS.num, color: t.textPrimary,
+    minWidth: 32, textAlign: 'center', fontVariant: ['tabular-nums'],
   },
-  repVal: { fontSize: 16, fontWeight: '600', color: t.textPrimary },
-  arrow: { fontSize: 14, color: t.textFaint },
+  row: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
+  setLabel: { width: 56, fontSize: 13.5, color: t.textSecondary, fontFamily: FONTS.ui },
+  repBtn: {
+    flex: 1, marginLeft: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    borderWidth: 1, borderColor: t.border, borderRadius: 11,
+    paddingHorizontal: 14, paddingVertical: 9,
+    backgroundColor: t.card2,
+  },
+  repVal: { fontSize: 16, fontFamily: FONTS.num, color: t.textPrimary, fontVariant: ['tabular-nums'] },
+  arrow: { fontSize: 12, color: t.textFaint },
   modalRoot: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: 'rgba(10,9,8,0.5)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   pickerBox: {
-    backgroundColor: t.card, borderRadius: 16,
-    width: 260, overflow: 'hidden',
-    shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 12, elevation: 8,
+    backgroundColor: t.card,
+    borderRadius: RADIUS.lg, borderWidth: 1, borderColor: t.border,
+    width: 240, overflow: 'hidden',
+    shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 16,
+    shadowOffset: { width: 0, height: 12 }, elevation: 8,
   },
   pickerTitle: {
-    fontSize: 15, fontWeight: '700', color: t.textPrimary,
-    textAlign: 'center', paddingVertical: 14,
+    fontSize: 14, fontFamily: FONTS.uiBold, color: t.textPrimary,
+    textAlign: 'center', paddingVertical: 15,
     borderBottomWidth: 1, borderColor: t.border,
   },
   option: {
     height: 48, paddingHorizontal: 20,
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    borderBottomWidth: 1, borderColor: t.borderAlt,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
   },
   optionSelected: { backgroundColor: t.accentBg },
-  optionText: { fontSize: 16, color: t.textSecondary },
-  optionTextSelected: { color: t.accent, fontWeight: '700' },
+  optionText: {
+    fontSize: 17, color: t.textSecondary, fontFamily: FONTS.num,
+    fontVariant: ['tabular-nums'],
+  },
+  optionTextSelected: { color: t.accentInk, fontFamily: FONTS.numBold },
   check: { fontSize: 16, color: t.accent },
 });

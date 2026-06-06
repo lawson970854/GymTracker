@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useMemo } from 'react';
 import { Modal, View, Text, Animated, TouchableOpacity, StyleSheet } from 'react-native';
-import { useTheme } from '../ThemeContext';
+import { Ionicons } from '@expo/vector-icons';
+import { useTheme, RADIUS, FONTS } from '../ThemeContext';
 
 export default function TrophyModal({ visible, type, onClose }) {
   const { theme } = useTheme();
@@ -45,7 +46,9 @@ export default function TrophyModal({ visible, type, onClose }) {
         accessibilityRole="button"
       >
         <Animated.View style={[s.card, { transform: [{ scale }, { translateY: bounce }] }]}>
-          <Text style={s.emoji} accessible={false}>{isGold ? '🏆' : '🥈'}</Text>
+          <View style={[s.iconCircle, !isGold && { backgroundColor: theme.textMuted }]}>
+            <Ionicons name="trophy" size={40} color="#fff" />
+          </View>
           <Text style={s.title}>{isGold ? '历史最高记录！' : '今日最佳！'}</Text>
           <Text style={s.sub}>{isGold ? '突破个人记录，太厉害了！' : '超越今日之前成绩！'}</Text>
         </Animated.View>
@@ -57,22 +60,32 @@ export default function TrophyModal({ visible, type, onClose }) {
 const makeStyles = (t) => StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    backgroundColor: 'rgba(10,9,8,0.5)',
     justifyContent: 'center',
     alignItems: 'center',
+    padding: 24,
   },
   card: {
     backgroundColor: t.card,
-    borderRadius: 20,
-    padding: 36,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1, borderColor: t.border,
+    padding: 34, paddingHorizontal: 30,
     alignItems: 'center',
     shadowColor: '#000',
     shadowOpacity: 0.2,
-    shadowRadius: 20,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 16 },
     elevation: 10,
     minWidth: 240,
   },
-  emoji: { fontSize: 72, marginBottom: 12 },
-  title: { fontSize: 22, fontWeight: '700', color: t.textPrimary, marginBottom: 6 },
-  sub: { fontSize: 15, color: t.textMuted, textAlign: 'center' },
+  iconCircle: {
+    width: 84, height: 84, borderRadius: 42,
+    backgroundColor: t.gold,
+    alignItems: 'center', justifyContent: 'center',
+    marginBottom: 16,
+    shadowColor: t.gold, shadowOpacity: 0.4, shadowRadius: 18,
+    shadowOffset: { width: 0, height: 8 },
+  },
+  title: { fontSize: 21, fontFamily: FONTS.uiExtra, color: t.textPrimary, marginBottom: 7, letterSpacing: -0.3 },
+  sub: { fontSize: 14, color: t.textMuted, textAlign: 'center', fontFamily: FONTS.ui },
 });

@@ -57,7 +57,7 @@ export default function InteractiveLineChart({
   if (xLabelIdxs[xLabelIdxs.length - 1] !== n - 1) xLabelIdxs.push(n - 1);
 
   const yTicks = [minV, minV + vRange / 2, maxV].map(v => Math.round(v));
-  const fmtY = (v) => v >= 10000 ? `${(v / 1000).toFixed(0)}k` : v >= 1000 ? `${(v / 1000).toFixed(1)}k` : String(v);
+  const fmtY = (v) => v.toLocaleString();
 
   const handleTouch = (x) => {
     const relX = x - padL;
@@ -120,7 +120,8 @@ export default function InteractiveLineChart({
               />
               <SvgText
                 x={-6} y={yOf(v) + 4}
-                textAnchor="end" fontSize={10} fill={axisLabelColor}
+                textAnchor="end" fontSize={9} fill={axisLabelColor}
+                fontFamily="Sora_600SemiBold"
               >
                 {fmtY(v)}
               </SvgText>
@@ -140,7 +141,8 @@ export default function InteractiveLineChart({
             <SvgText
               key={i}
               x={xOf(i)} y={cH + 24}
-              textAnchor="middle" fontSize={10} fill={axisLabelColor}
+              textAnchor="middle" fontSize={9} fill={axisLabelColor}
+              fontFamily="Sora_600SemiBold"
             >
               {labels[i]}
             </SvgText>
