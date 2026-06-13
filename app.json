@@ -9,7 +9,10 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/expo.icon",
-      "bundleIdentifier": "com.frankwang.gymtracker"
+      "bundleIdentifier": "com.frankwang.gymtracker",
+      "runtimeVersion": {
+        "policy": "appVersion"
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -40,6 +43,18 @@
     ],
     "experiments": {
       "reactCompiler": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "e0c34480-2ee9-453a-88b1-30e93fd1f1ea"
+      }
+    },
+    "owner": "lawson970854",
+    "updates": {
+      "url": "https://u.expo.dev/e0c34480-2ee9-453a-88b1-30e93fd1f1ea",
+      "requestHeaders": {
+        "expo-channel-name": "production"
+      }
     }
   }
 }
