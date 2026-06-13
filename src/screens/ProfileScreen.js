@@ -693,20 +693,20 @@ const makeStyles = (t) => StyleSheet.create({
 
   // Highlights
   highlightRow: { flexDirection: 'row', paddingHorizontal: 16, marginBottom: 10, alignItems: 'stretch', gap: 10 },
-  hlCard: { borderRadius: 20, paddingHorizontal: 16, paddingVertical: 15, flex: 1 },
+  hlCard: { borderRadius: 20, paddingHorizontal: 18, paddingVertical: 20, flex: 1 },
   hlAccent: {
     backgroundColor: t.accent,
     shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 14,
     shadowOffset: { width: 0, height: 8 }, elevation: 4,
   },
-  hlTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, opacity: 0.9 },
+  hlTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, opacity: 0.9 },
   hlLabel: { fontSize: 11, fontFamily: FONTS.uiBold, color: t.onAccent, letterSpacing: 0.3 },
   hlNum: {
-    fontSize: 27, fontFamily: FONTS.numBold, color: t.onAccent,
+    fontSize: 32, fontFamily: FONTS.numBold, color: t.onAccent,
     letterSpacing: -0.8, fontVariant: ['tabular-nums'],
   },
   hlUnit: { fontSize: 10, color: t.onAccent, opacity: 0.8 },
-  hlSub: { fontSize: 10.5, color: t.onAccent, opacity: 0.82, textAlign: 'right', marginTop: 6, fontFamily: FONTS.ui },
+  hlSub: { fontSize: 10.5, color: t.onAccent, opacity: 0.82, textAlign: 'right', marginTop: 10, fontFamily: FONTS.ui },
 
   // Stats 2×2
   statsCard: {
@@ -778,7 +778,7 @@ const makeStyles = (t) => StyleSheet.create({
     shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4,
     shadowOffset: { width: 0, height: 1 }, elevation: 1,
   },
-  schemeRow: { flexDirection: 'row', gap: 12, flexWrap: 'wrap' },
+  schemeRow: { flexDirection: 'row', gap: 12, flexWrap: 'wrap', justifyContent: 'center' },
   schemeDot: {
     width: 34, height: 34, borderRadius: 11,
     borderWidth: 2, borderColor: 'transparent',
