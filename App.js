@@ -6,6 +6,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useFonts } from 'expo-font';
 import { Sora_600SemiBold, Sora_700Bold } from '@expo-google-fonts/sora';
 import { Manrope_500Medium, Manrope_600SemiBold, Manrope_700Bold, Manrope_800ExtraBold } from '@expo-google-fonts/manrope';
+import * as Updates from 'expo-updates';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from './src/queryClient';
 import { supabase } from './src/supabase';
@@ -146,6 +147,22 @@ function App() {
     Sora_600SemiBold, Sora_700Bold,
     Manrope_500Medium, Manrope_600SemiBold, Manrope_700Bold, Manrope_800ExtraBold,
   });
+
+  // 启动时主动检查 OTA 更新：有新版就下载并自动重载，省去手动开两次
+  useEffect(() => {
+    if (__DEV__) return;
+    (async () => {
+      try {
+        const { isAvailable } = await Updates.checkForUpdateAsync();
+        if (isAvailable) {
+          await Updates.fetchUpdateAsync();
+          await Updates.reloadAsync();
+        }
+      } catch {
+        // 检查失败（如离线）静默忽略，不影响正常使用
+      }
+    })();
+  }, []);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
