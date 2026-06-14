@@ -1,0 +1,14 @@
+name: Publish OTA update
+
+# 推送到 main 分支后，自动发布 OTA 更新到 production 频道
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  publish_update:
+    type: update
+    params:
+      platform: all
+      branch: production
