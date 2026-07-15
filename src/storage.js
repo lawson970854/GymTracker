@@ -5,8 +5,8 @@ import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from './supabase';
 const PROFILE_CACHE_KEY = '@gymtracker:profile';
 
 async function getUserId() {
-  const { data: { user } } = await supabase.auth.getUser();
-  return user?.id;
+  const { data: { session } } = await supabase.auth.getSession();
+  return session?.user?.id;
 }
 
 // ── 核心查询函数（TanStack Query 使用）────────────────
