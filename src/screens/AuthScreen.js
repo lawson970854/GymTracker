@@ -2,7 +2,7 @@ import React, { useState, useRef, useMemo, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
   StyleSheet, KeyboardAvoidingView, Platform, Alert,
-  ActivityIndicator, SafeAreaView,
+  ActivityIndicator, SafeAreaView, ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as AppleAuthentication from 'expo-apple-authentication';
@@ -112,69 +112,60 @@ export default function AuthScreen() {
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <View style={s.inner}>
+        <ScrollView
+          contentContainerStyle={s.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
           <View style={s.logoBadge}>
-            <Ionicons name="barbell-outline" size={42} color={t.onAccent} />
+            <Ionicons name="barbell-outline" size={36} color={t.onAccent} />
           </View>
-          <Text style={s.title}>铁记</Text>
-          <Text style={s.subtitle}>登录或注册以同步你的训练数据</Text>
+
+          {/* 大标题随登录/注册模式切换，用强对比取代小字提示 */}
+          <Text style={s.title}>{isLogin ? '欢迎回来' : '创建你的账号'}</Text>
+          <Text style={s.subtitle}>
+            {isLogin ? '登录铁记，继续记录你的训练' : '注册铁记，开始记录你的训练'}
+          </Text>
 
           {appleAvailable && (
-            <>
-              <View style={s.appleWrap}>
-                {lastMethod === 'apple' && (
-                  <View style={s.lastUsedBadge}>
-                    <Text style={s.lastUsedText}>上次使用</Text>
-                  </View>
-                )}
-                <AppleAuthentication.AppleAuthenticationButton
-                  buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
-                  buttonStyle={isDark
-                    ? AppleAuthentication.AppleAuthenticationButtonStyle.WHITE
-                    : AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
-                  cornerRadius={RADIUS.btn}
-                  style={s.appleBtn}
-                  onPress={handleAppleSignIn}
-                />
-              </View>
-
-              <View style={s.dividerRow}>
-                <View style={s.dividerLine} />
-                <Text style={s.dividerText}>或使用邮箱</Text>
-                <View style={s.dividerLine} />
-              </View>
-            </>
+            <View style={s.appleWrap}>
+              {lastMethod === 'apple' && (
+                <View style={s.lastUsedBadge}>
+                  <Text style={s.lastUsedText}>上次使用</Text>
+                </View>
+              )}
+              <AppleAuthentication.AppleAuthenticationButton
+                buttonType={isLogin
+                  ? AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN
+                  : AppleAuthentication.AppleAuthenticationButtonType.SIGN_UP}
+                buttonStyle={isDark
+                  ? AppleAuthentication.AppleAuthenticationButtonStyle.WHITE
+                  : AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+                cornerRadius={RADIUS.btn}
+                style={s.appleBtn}
+                onPress={handleAppleSignIn}
+              />
+            </View>
           )}
 
-          <View style={s.emailWrap}>
+          {appleAvailable && (
+            <View style={s.dividerRow}>
+              <View style={s.dividerLine} />
+              <Text style={s.dividerText}>或</Text>
+              <View style={s.dividerLine} />
+            </View>
+          )}
+
+          <View style={s.fieldWrap}>
             {lastMethod === 'email' && (
-              <View style={[s.lastUsedBadge, s.lastUsedBadgeEmail]}>
+              <View style={s.lastUsedBadgeInline}>
                 <Text style={s.lastUsedText}>上次使用</Text>
               </View>
             )}
-
-            <View style={s.tabRow}>
-              <TouchableOpacity
-                style={[s.tabBtn, isLogin && s.tabBtnActive]}
-                onPress={() => setIsLogin(true)}
-                accessibilityRole="button"
-                accessibilityLabel="切换到登录"
-              >
-                <Text style={[s.tabText, isLogin && s.tabTextActive]}>登录</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[s.tabBtn, !isLogin && s.tabBtnActive]}
-                onPress={() => setIsLogin(false)}
-                accessibilityRole="button"
-                accessibilityLabel="切换到注册"
-              >
-                <Text style={[s.tabText, !isLogin && s.tabTextActive]}>注册</Text>
-              </TouchableOpacity>
-            </View>
-
+            <Text style={s.label}>邮箱</Text>
             <TextInput
               style={s.input}
-              placeholder="邮箱"
+              placeholder="you@example.com"
               placeholderTextColor={t.textFaint}
               value={email}
               onChangeText={setEmail}
@@ -186,12 +177,26 @@ export default function AuthScreen() {
               onSubmitEditing={() => passwordRef.current?.focus()}
               accessibilityLabel="邮箱地址"
             />
+          </View>
 
+          <View style={s.fieldWrap}>
+            <View style={s.labelRow}>
+              <Text style={s.label}>密码</Text>
+              {isLogin && (
+                <TouchableOpacity
+                  onPress={handleForgotPassword}
+                  accessibilityRole="button"
+                  accessibilityLabel="忘记密码"
+                >
+                  <Text style={s.forgotText}>忘记密码？</Text>
+                </TouchableOpacity>
+              )}
+            </View>
             <View style={s.passwordRow}>
               <TextInput
                 ref={passwordRef}
                 style={s.passwordInput}
-                placeholder="密码（至少 6 位）"
+                placeholder="至少 6 位"
                 placeholderTextColor={t.textFaint}
                 value={password}
                 onChangeText={setPassword}
@@ -214,32 +219,34 @@ export default function AuthScreen() {
                 />
               </TouchableOpacity>
             </View>
-
-            {isLogin && (
-              <TouchableOpacity
-                onPress={handleForgotPassword}
-                accessibilityRole="button"
-                accessibilityLabel="忘记密码"
-                style={s.forgotBtn}
-              >
-                <Text style={s.forgotText}>忘记密码？</Text>
-              </TouchableOpacity>
-            )}
-
-            <TouchableOpacity
-              style={s.btn}
-              onPress={handleAuth}
-              disabled={loading}
-              accessibilityRole="button"
-              accessibilityLabel={isLogin ? '登录' : '注册'}
-            >
-              {loading
-                ? <ActivityIndicator color={t.onAccent} />
-                : <Text style={s.btnText}>{isLogin ? '登录' : '注册'}</Text>
-              }
-            </TouchableOpacity>
           </View>
-        </View>
+
+          <TouchableOpacity
+            style={s.btn}
+            onPress={handleAuth}
+            disabled={loading}
+            accessibilityRole="button"
+            accessibilityLabel={isLogin ? '登录' : '注册'}
+          >
+            {loading
+              ? <ActivityIndicator color={t.onAccent} />
+              : <Text style={s.btnText}>{isLogin ? '登录' : '注册'}</Text>
+            }
+          </TouchableOpacity>
+
+          {/* 底部切换：没有账号的人明确看到"去注册"，而不是靠上方小字猜 */}
+          <TouchableOpacity
+            onPress={() => setIsLogin(!isLogin)}
+            accessibilityRole="button"
+            accessibilityLabel={isLogin ? '没有账号，去注册' : '已有账号，去登录'}
+            style={s.switchRow}
+          >
+            <Text style={s.switchText}>
+              {isLogin ? '没有账号？' : '已有账号？'}
+              <Text style={s.switchLink}>{isLogin ? ' 去注册' : ' 去登录'}</Text>
+            </Text>
+          </TouchableOpacity>
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -247,48 +254,50 @@ export default function AuthScreen() {
 
 const makeStyles = (t) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: t.bg },
-  inner: { flex: 1, justifyContent: 'center', paddingHorizontal: 34 },
+  scrollContent: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 34, paddingVertical: 40 },
   logoBadge: {
-    width: 84, height: 84, borderRadius: 24,
+    width: 72, height: 72, borderRadius: 20,
     backgroundColor: t.accent,
     alignSelf: 'center', alignItems: 'center', justifyContent: 'center',
-    marginBottom: 20,
+    marginBottom: 24,
     shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 20,
     shadowOffset: { width: 0, height: 12 }, elevation: 6,
   },
   title: {
-    fontSize: 30, fontFamily: FONTS.numBold, color: t.textPrimary,
+    fontSize: 28, fontFamily: FONTS.numBold, color: t.textPrimary,
     textAlign: 'center', letterSpacing: -0.6,
   },
   subtitle: {
     fontSize: 14, textAlign: 'center', color: t.textMuted,
-    marginTop: 6, marginBottom: 30, fontFamily: FONTS.ui,
+    marginTop: 8, marginBottom: 32, fontFamily: FONTS.ui,
   },
   appleWrap: { position: 'relative' },
-  emailWrap: { position: 'relative' },
+  appleBtn: { height: 50 },
+  dividerRow: { flexDirection: 'row', alignItems: 'center', marginVertical: 22 },
+  dividerLine: { flex: 1, height: 1, backgroundColor: t.border },
+  dividerText: { marginHorizontal: 12, fontSize: 13, color: t.textFaint, fontFamily: FONTS.ui },
   lastUsedBadge: {
     position: 'absolute', top: -10, right: 8, zIndex: 1,
     backgroundColor: t.accent, borderRadius: 999,
     paddingHorizontal: 9, paddingVertical: 3,
   },
-  lastUsedBadgeEmail: { top: -10 },
+  lastUsedBadgeInline: {
+    position: 'absolute', top: -8, right: 0, zIndex: 1,
+    backgroundColor: t.accent, borderRadius: 999,
+    paddingHorizontal: 9, paddingVertical: 3,
+  },
   lastUsedText: { color: t.onAccent, fontSize: 11, fontFamily: FONTS.uiBold },
-  tabRow: {
-    flexDirection: 'row', backgroundColor: t.card, borderRadius: RADIUS.btn,
-    borderWidth: 1, borderColor: t.border, padding: 4,
-    marginBottom: 16,
+  fieldWrap: { position: 'relative', marginBottom: 16 },
+  label: { fontSize: 13, color: t.textMuted, fontFamily: FONTS.uiBold, marginBottom: 8 },
+  labelRow: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8,
   },
-  tabBtn: {
-    flex: 1, paddingVertical: 10, borderRadius: RADIUS.btn - 4, alignItems: 'center',
-  },
-  tabBtnActive: { backgroundColor: t.accent },
-  tabText: { fontSize: 15, fontFamily: FONTS.uiBold, color: t.textMuted },
-  tabTextActive: { color: t.onAccent },
+  forgotText: { fontSize: 13, color: t.accentInk, fontFamily: FONTS.uiBold },
   input: {
     height: 54, borderRadius: RADIUS.btn, paddingHorizontal: 16,
     backgroundColor: t.card,
     borderWidth: 1, borderColor: t.border,
-    fontSize: 15, color: t.textPrimary, marginBottom: 13,
+    fontSize: 15, color: t.textPrimary,
     fontFamily: FONTS.ui,
     shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 4, elevation: 1,
   },
@@ -301,18 +310,15 @@ const makeStyles = (t) => StyleSheet.create({
   },
   passwordInput: { flex: 1, fontSize: 15, color: t.textPrimary, fontFamily: FONTS.ui },
   eyeBtn: { paddingHorizontal: 14, paddingVertical: 16 },
-  forgotBtn: { alignSelf: 'flex-end', marginTop: 10 },
-  forgotText: { fontSize: 13, color: t.accentInk, fontFamily: FONTS.uiBold },
   btn: {
     backgroundColor: t.accent, borderRadius: RADIUS.btn,
     height: 54, alignItems: 'center', justifyContent: 'center',
-    marginTop: 20,
+    marginTop: 8,
     shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 18,
     shadowOffset: { width: 0, height: 10 },
   },
   btnText: { color: t.onAccent, fontSize: 16, fontFamily: FONTS.uiBold },
-  dividerRow: { flexDirection: 'row', alignItems: 'center', marginTop: 22, marginBottom: 22 },
-  dividerLine: { flex: 1, height: 1, backgroundColor: t.border },
-  dividerText: { marginHorizontal: 12, fontSize: 13, color: t.textFaint, fontFamily: FONTS.ui },
-  appleBtn: { height: 50 },
+  switchRow: { marginTop: 22, alignItems: 'center' },
+  switchText: { fontSize: 14, color: t.textMuted, fontFamily: FONTS.ui },
+  switchLink: { color: t.accentInk, fontFamily: FONTS.uiBold },
 });
