@@ -5,11 +5,12 @@ import {
   ActivityIndicator, SafeAreaView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as AppleAuthentication from 'expo-apple-authentication';
 import { supabase } from '../supabase';
 import { useTheme, RADIUS, FONTS } from '../ThemeContext';
 
 export default function AuthScreen() {
-  const { theme: t } = useTheme();
+  const { theme: t, isDark } = useTheme();
   const s = useMemo(() => makeStyles(t), [t]);
 
   const [email, setEmail] = useState('');
@@ -19,6 +20,28 @@ export default function AuthScreen() {
   const [showPassword, setShowPassword] = useState(false);
 
   const passwordRef = useRef(null);
+
+  const handleAppleSignIn = async () => {
+    try {
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+      });
+      if (!credential.identityToken) throw new Error('未获取到 Apple 身份令牌');
+
+      const { error } = await supabase.auth.signInWithIdToken({
+        provider: 'apple',
+        token: credential.identityToken,
+      });
+      if (error) Alert.alert('登录失败', error.message);
+    } catch (e) {
+      if (e.code !== 'ERR_REQUEST_CANCELED') {
+        Alert.alert('登录失败', e.message || '请重试');
+      }
+    }
+  };
 
   const handleAuth = async () => {
     const e = email.trim();
@@ -119,6 +142,25 @@ export default function AuthScreen() {
               {isLogin ? '没有账号？点此注册' : '已有账号？点此登录'}
             </Text>
           </TouchableOpacity>
+
+          {Platform.OS === 'ios' && (
+            <>
+              <View style={s.dividerRow}>
+                <View style={s.dividerLine} />
+                <Text style={s.dividerText}>或</Text>
+                <View style={s.dividerLine} />
+              </View>
+              <AppleAuthentication.AppleAuthenticationButton
+                buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
+                buttonStyle={isDark
+                  ? AppleAuthentication.AppleAuthenticationButtonStyle.WHITE
+                  : AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+                cornerRadius={RADIUS.btn}
+                style={s.appleBtn}
+                onPress={handleAppleSignIn}
+              />
+            </>
+          )}
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -168,4 +210,8 @@ const makeStyles = (t) => StyleSheet.create({
   },
   btnText: { color: t.onAccent, fontSize: 16, fontFamily: FONTS.uiBold },
   toggle: { fontSize: 14, textAlign: 'center', color: t.accentInk, fontFamily: FONTS.uiBold },
+  dividerRow: { flexDirection: 'row', alignItems: 'center', marginTop: 26, marginBottom: 16 },
+  dividerLine: { flex: 1, height: 1, backgroundColor: t.border },
+  dividerText: { marginHorizontal: 12, fontSize: 13, color: t.textFaint, fontFamily: FONTS.ui },
+  appleBtn: { height: 50 },
 });
