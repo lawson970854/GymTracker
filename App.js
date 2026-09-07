@@ -1,6 +1,6 @@
 import 'react-native-gesture-handler';
 import { registerRootComponent } from 'expo';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import * as SplashScreen from 'expo-splash-screen';
 import { useFonts } from 'expo-font';
@@ -142,6 +142,7 @@ function AppContent() {
 
 function App() {
   const [session, setSession] = useState(undefined);
+  const lastUserIdRef = useRef(undefined);
   const [fontsLoaded] = useFonts({
     Sora_600SemiBold, Sora_700Bold,
     Manrope_500Medium, Manrope_600SemiBold, Manrope_700Bold, Manrope_800ExtraBold,
@@ -152,10 +153,18 @@ function App() {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
+      lastUserIdRef.current = session?.user?.id ?? null;
       setSession(session);
       SplashScreen.hideAsync();
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      const userId = session?.user?.id ?? null;
+      // React Query 的缓存是跨账号共享的（同一台设备上），换账号登录时必须清空，
+      // 否则会短暂显示上一个账号缓存下来的数据。
+      if (userId !== lastUserIdRef.current) {
+        queryClient.clear();
+      }
+      lastUserIdRef.current = userId;
       setSession(session);
     });
     return () => subscription.unsubscribe();
