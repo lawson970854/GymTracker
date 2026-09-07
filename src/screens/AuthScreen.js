@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
   StyleSheet, KeyboardAvoidingView, Platform, Alert,
@@ -18,8 +18,15 @@ export default function AuthScreen() {
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [appleAvailable, setAppleAvailable] = useState(false);
 
   const passwordRef = useRef(null);
+
+  useEffect(() => {
+    if (Platform.OS === 'ios') {
+      AppleAuthentication.isAvailableAsync().then(setAppleAvailable);
+    }
+  }, []);
 
   const handleAppleSignIn = async () => {
     try {
@@ -151,7 +158,7 @@ export default function AuthScreen() {
             }
           </TouchableOpacity>
 
-          {Platform.OS === 'ios' && (
+          {appleAvailable && (
             <>
               <View style={s.dividerRow}>
                 <View style={s.dividerLine} />
