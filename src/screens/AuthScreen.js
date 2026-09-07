@@ -74,8 +74,26 @@ export default function AuthScreen() {
           <View style={s.logoBadge}>
             <Ionicons name="barbell-outline" size={42} color={t.onAccent} />
           </View>
-          <Text style={s.title}>GymTracker</Text>
-          <Text style={s.subtitle}>{isLogin ? '登录账号' : '创建账号'}</Text>
+          <Text style={s.title}>铁记</Text>
+
+          <View style={s.tabRow}>
+            <TouchableOpacity
+              style={[s.tabBtn, isLogin && s.tabBtnActive]}
+              onPress={() => setIsLogin(true)}
+              accessibilityRole="button"
+              accessibilityLabel="切换到登录"
+            >
+              <Text style={[s.tabText, isLogin && s.tabTextActive]}>登录</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[s.tabBtn, !isLogin && s.tabBtnActive]}
+              onPress={() => setIsLogin(false)}
+              accessibilityRole="button"
+              accessibilityLabel="切换到注册"
+            >
+              <Text style={[s.tabText, !isLogin && s.tabTextActive]}>注册</Text>
+            </TouchableOpacity>
+          </View>
 
           <TextInput
             style={s.input}
@@ -133,16 +151,6 @@ export default function AuthScreen() {
             }
           </TouchableOpacity>
 
-          <TouchableOpacity
-            onPress={() => setIsLogin(!isLogin)}
-            accessibilityRole="button"
-            accessibilityLabel={isLogin ? '没有账号，点此注册' : '已有账号，点此登录'}
-          >
-            <Text style={s.toggle}>
-              {isLogin ? '没有账号？点此注册' : '已有账号？点此登录'}
-            </Text>
-          </TouchableOpacity>
-
           {Platform.OS === 'ios' && (
             <>
               <View style={s.dividerRow}>
@@ -182,7 +190,17 @@ const makeStyles = (t) => StyleSheet.create({
     fontSize: 30, fontFamily: FONTS.numBold, color: t.textPrimary,
     textAlign: 'center', letterSpacing: -0.6,
   },
-  subtitle: { fontSize: 15, textAlign: 'center', color: t.textMuted, marginTop: 6, marginBottom: 36, fontFamily: FONTS.ui },
+  tabRow: {
+    flexDirection: 'row', backgroundColor: t.card, borderRadius: RADIUS.btn,
+    borderWidth: 1, borderColor: t.border, padding: 4,
+    marginTop: 24, marginBottom: 28,
+  },
+  tabBtn: {
+    flex: 1, paddingVertical: 10, borderRadius: RADIUS.btn - 4, alignItems: 'center',
+  },
+  tabBtnActive: { backgroundColor: t.accent },
+  tabText: { fontSize: 15, fontFamily: FONTS.uiBold, color: t.textMuted },
+  tabTextActive: { color: t.onAccent },
   input: {
     height: 54, borderRadius: RADIUS.btn, paddingHorizontal: 16,
     backgroundColor: t.card,
@@ -209,8 +227,7 @@ const makeStyles = (t) => StyleSheet.create({
     shadowOffset: { width: 0, height: 10 },
   },
   btnText: { color: t.onAccent, fontSize: 16, fontFamily: FONTS.uiBold },
-  toggle: { fontSize: 14, textAlign: 'center', color: t.accentInk, fontFamily: FONTS.uiBold },
-  dividerRow: { flexDirection: 'row', alignItems: 'center', marginTop: 26, marginBottom: 16 },
+  dividerRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4, marginBottom: 16 },
   dividerLine: { flex: 1, height: 1, backgroundColor: t.border },
   dividerText: { marginHorizontal: 12, fontSize: 13, color: t.textFaint, fontFamily: FONTS.ui },
   appleBtn: { height: 50 },

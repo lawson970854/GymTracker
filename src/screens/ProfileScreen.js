@@ -271,7 +271,7 @@ export default function ProfileScreen() {
                 : null
             }
           </TouchableOpacity>
-          <Text style={s.nickname}>{profile.nickname || 'GymTracker'}</Text>
+          <Text style={s.nickname}>{profile.nickname || '铁记'}</Text>
           {profileSub ? <Text style={s.profileSub}>{profileSub}</Text> : null}
           <TouchableOpacity
             style={s.editBtn}
