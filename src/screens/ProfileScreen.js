@@ -8,7 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import * as ImagePicker from 'expo-image-picker';
-import { fetchGymData, loadProfile, saveProfile, uploadAvatar, clearAllData } from '../storage';
+import { fetchGymData, loadProfile, saveProfile, uploadAvatar, clearAllData, deleteAccount } from '../storage';
 import { GYM_DATA_KEY } from '../queryClient';
 import { supabase } from '../supabase';
 import { useTheme, RADIUS, FONTS, SCHEMES, SCHEME_LABELS } from '../ThemeContext';
@@ -203,6 +203,32 @@ export default function ProfileScreen() {
         },
       },
     ]);
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      '删除账号',
+      '将永久删除你的账号、个人资料和全部训练记录。此操作无法撤销，也无法找回。',
+      [
+        { text: '取消', style: 'cancel' },
+        {
+          text: '继续', style: 'destructive', onPress: () => {
+            Alert.alert('最后确认', '删除后需要重新注册才能使用，确定删除账号吗？', [
+              { text: '取消', style: 'cancel' },
+              { text: '确认删除账号', style: 'destructive', onPress: async () => {
+                try {
+                  await deleteAccount();
+                  // 账号已不存在，登出触发 App.js 清空缓存并回到登录页
+                  await supabase.auth.signOut();
+                } catch (e) {
+                  Alert.alert('删除失败', e.message || '请检查网络后重试');
+                }
+              }},
+            ]);
+          },
+        },
+      ],
+    );
   };
 
   const sheetPaddingBottom = Math.max(insets.bottom + 16, 32);
@@ -419,6 +445,15 @@ export default function ProfileScreen() {
           accessibilityLabel="退出登录"
         >
           <Text style={s.logoutBtnText}>退出登录</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={s.deleteAccountBtn}
+          onPress={handleDeleteAccount}
+          accessibilityRole="button"
+          accessibilityLabel="删除账号"
+        >
+          <Text style={s.deleteAccountText}>删除账号</Text>
         </TouchableOpacity>
 
       </ScrollView>
@@ -794,12 +829,16 @@ const makeStyles = (t) => StyleSheet.create({
   },
   dangerBtnText: { color: '#E5484D', fontSize: 15, fontFamily: FONTS.uiBold },
   logoutBtn: {
-    marginHorizontal: 16, marginTop: 10, marginBottom: 32,
+    marginHorizontal: 16, marginTop: 10,
     paddingVertical: 16, borderRadius: RADIUS.btn,
     backgroundColor: 'transparent', alignItems: 'center',
     borderWidth: 1, borderColor: t.border,
   },
   logoutBtnText: { color: t.textSecondary, fontSize: 15, fontFamily: FONTS.uiBold },
+  deleteAccountBtn: {
+    marginTop: 24, marginBottom: 32, paddingVertical: 12, alignItems: 'center',
+  },
+  deleteAccountText: { color: '#E5484D', fontSize: 14, fontFamily: FONTS.uiBold },
 
   // Modal
   modalOverlay: { flex: 1, backgroundColor: 'rgba(10,9,8,0.5)', justifyContent: 'flex-end' },

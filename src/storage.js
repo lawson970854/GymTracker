@@ -262,6 +262,15 @@ export async function clearAllData() {
   }
 }
 
+// ── 危险操作：删除整个账号 ─────────────────────────────
+// 删除范围：训练数据 + 个人资料 + 头像 + 账号本身，全部不可恢复。
+// 必须走 Edge Function：删 auth 用户需要 service_role 权限，这个密钥不能放进 App。
+export async function deleteAccount() {
+  const { data, error } = await supabase.functions.invoke('delete-account', { method: 'POST' });
+  if (error) throw error;
+  if (data?.error) throw new Error(data.error);
+}
+
 // ── 工具函数 ──────────────────────────────────────────
 export function calcVolume(weight, repsArr) {
   return repsArr.reduce((s, r) => s + weight * r, 0);
