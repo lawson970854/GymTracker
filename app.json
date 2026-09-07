@@ -12,6 +12,9 @@
       "bundleIdentifier": "com.frankwang.gymtracker",
       "runtimeVersion": {
         "policy": "appVersion"
+      },
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
