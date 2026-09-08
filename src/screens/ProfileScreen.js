@@ -97,7 +97,6 @@ const wp = StyleSheet.create({
 export default function ProfileScreen() {
   const { theme, mode, setMode, isDark } = useTheme();
   const s = useMemo(() => makeStyles(theme, isDark), [theme, isDark]);
-  const danger = useMemo(() => dangerPalette(isDark), [isDark]);
   const insets = useSafeAreaInsets();
 
   const qc = useQueryClient();
@@ -439,37 +438,25 @@ export default function ProfileScreen() {
           <Text style={s.logoutBtnText}>退出登录</Text>
         </TouchableOpacity>
 
-        <View style={s.dangerZone}>
-          <Text style={s.dangerZoneTitle}>危险操作</Text>
+        <TouchableOpacity
+          style={s.dangerBtn}
+          onPress={handleClearAllData}
+          accessibilityRole="button"
+          accessibilityLabel="清除所有数据"
+        >
+          <Text style={s.dangerBtnLabel}>清除所有数据</Text>
+          <Text style={s.dangerBtnDesc}>删除全部健身房、器械和训练记录，账号保留</Text>
+        </TouchableOpacity>
 
-          <TouchableOpacity
-            style={s.dangerRow}
-            onPress={handleClearAllData}
-            accessibilityRole="button"
-            accessibilityLabel="清除所有数据"
-          >
-            <View style={s.dangerRowText}>
-              <Text style={s.dangerRowLabel}>清除所有数据</Text>
-              <Text style={s.dangerRowDesc}>删除全部健身房、器械和训练记录，账号保留</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={danger.fg} />
-          </TouchableOpacity>
-
-          <View style={s.dangerDivider} />
-
-          <TouchableOpacity
-            style={s.dangerRow}
-            onPress={handleDeleteAccount}
-            accessibilityRole="button"
-            accessibilityLabel="删除账号"
-          >
-            <View style={s.dangerRowText}>
-              <Text style={s.dangerRowLabel}>删除账号</Text>
-              <Text style={s.dangerRowDesc}>连同账号、个人资料和训练记录一并永久删除</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={danger.fg} />
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity
+          style={[s.dangerBtn, s.dangerBtnLast]}
+          onPress={handleDeleteAccount}
+          accessibilityRole="button"
+          accessibilityLabel="删除账号"
+        >
+          <Text style={s.dangerBtnLabel}>删除账号</Text>
+          <Text style={s.dangerBtnDesc}>连同账号、个人资料和训练记录一并永久删除</Text>
+        </TouchableOpacity>
 
       </ScrollView>
 
@@ -708,6 +695,9 @@ const dangerPalette = (isDark) => isDark
   ? { fg: '#FF6369', border: '#3A2224' }
   : { fg: '#E5484D', border: '#F1D4D4' };
 
+// 退出登录 / 清除数据 / 删除账号 三个按钮共用，保证高度完全一致
+const ACTION_BTN_HEIGHT = 62;
+
 const makeStyles = (t, isDark) => {
   const danger = dangerPalette(isDark);
   return StyleSheet.create({
@@ -845,33 +835,26 @@ const makeStyles = (t, isDark) => {
   },
 
   // Bottom buttons
+  // 三个底部操作共用同一形态：等高、等圆角、居中内容，只靠颜色区分危险程度
   logoutBtn: {
     marginHorizontal: 16, marginTop: 12,
-    paddingVertical: 16, borderRadius: RADIUS.btn,
-    backgroundColor: t.card, alignItems: 'center',
+    height: ACTION_BTN_HEIGHT, borderRadius: RADIUS.btn,
+    backgroundColor: t.card, alignItems: 'center', justifyContent: 'center',
     borderWidth: 1, borderColor: t.border,
   },
   logoutBtnText: { color: t.textPrimary, fontSize: 15, fontFamily: FONTS.uiBold },
-
-  // 破坏性操作单独成区：跟日常操作拉开距离，红色只在这一块里出现
-  dangerZone: {
-    marginHorizontal: 16, marginTop: 28, marginBottom: 32,
-    borderWidth: 1, borderColor: danger.border, borderRadius: RADIUS.card,
-    backgroundColor: t.card, overflow: 'hidden',
+  dangerBtn: {
+    marginHorizontal: 16, marginTop: 12, paddingHorizontal: 16,
+    height: ACTION_BTN_HEIGHT, borderRadius: RADIUS.btn,
+    backgroundColor: t.card, alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: danger.border,
   },
-  dangerZoneTitle: {
-    fontSize: 11.5, fontFamily: FONTS.uiBold, color: danger.fg,
-    letterSpacing: 1.6, textTransform: 'uppercase',
-    paddingHorizontal: 18, paddingTop: 16, paddingBottom: 4,
+  dangerBtnLast: { marginBottom: 32 },
+  dangerBtnLabel: { fontSize: 15, fontFamily: FONTS.uiBold, color: danger.fg, textAlign: 'center' },
+  dangerBtnDesc: {
+    fontSize: 12, color: t.textMuted, fontFamily: FONTS.ui,
+    marginTop: 2, textAlign: 'center',
   },
-  dangerRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    paddingHorizontal: 18, paddingVertical: 14,
-  },
-  dangerRowText: { flex: 1 },
-  dangerRowLabel: { fontSize: 15, fontFamily: FONTS.uiBold, color: danger.fg },
-  dangerRowDesc: { fontSize: 12.5, color: t.textMuted, fontFamily: FONTS.ui, marginTop: 3, lineHeight: 17 },
-  dangerDivider: { height: 1, backgroundColor: danger.border, marginLeft: 18 },
 
   // Modal
   modalOverlay: { flex: 1, backgroundColor: 'rgba(10,9,8,0.5)', justifyContent: 'flex-end' },
