@@ -11,6 +11,7 @@ import { supabase } from '../supabase';
 import { useTheme, RADIUS, FONTS } from '../ThemeContext';
 
 const LAST_METHOD_KEY = '@gymtracker:lastAuthMethod';
+const DANGER = '#E5484D';
 
 export default function AuthScreen() {
   const { theme: t, isDark } = useTheme();
@@ -18,6 +19,7 @@ export default function AuthScreen() {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [password2, setPassword2] = useState('');
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -27,6 +29,10 @@ export default function AuthScreen() {
   const [resent, setResent] = useState(false);
 
   const passwordRef = useRef(null);
+  const password2Ref = useRef(null);
+
+  // 两次密码都填了才提示不一致，避免边打字边报错
+  const mismatch = !isLogin && password2.length > 0 && password !== password2;
 
   useEffect(() => {
     if (Platform.OS === 'ios') {
@@ -68,6 +74,9 @@ export default function AuthScreen() {
     const p = password.trim();
     if (!e || !p) return Alert.alert('提示', '请输入邮箱和密码');
     if (p.length < 6) return Alert.alert('提示', '密码至少 6 位');
+    if (!isLogin && p !== password2.trim()) {
+      return Alert.alert('提示', '两次输入的密码不一致');
+    }
 
     setLoading(true);
     try {
@@ -103,6 +112,7 @@ export default function AuthScreen() {
   const backToLogin = () => {
     setPendingEmail(null);
     setPassword('');
+    setPassword2('');
     setIsLogin(true);
   };
 
@@ -264,8 +274,8 @@ export default function AuthScreen() {
                 onChangeText={setPassword}
                 secureTextEntry={!showPassword}
                 textContentType={isLogin ? 'password' : 'newPassword'}
-                returnKeyType="done"
-                onSubmitEditing={handleAuth}
+                returnKeyType={isLogin ? 'done' : 'next'}
+                onSubmitEditing={() => isLogin ? handleAuth() : password2Ref.current?.focus()}
                 accessibilityLabel="密码"
               />
               <TouchableOpacity
@@ -283,6 +293,37 @@ export default function AuthScreen() {
             </View>
           </View>
 
+          {!isLogin && (
+            <View style={s.fieldWrap}>
+              <Text style={s.label}>确认密码</Text>
+              <View style={[s.passwordRow, mismatch && s.inputError]}>
+                <TextInput
+                  ref={password2Ref}
+                  style={s.passwordInput}
+                  placeholder="再输入一次"
+                  placeholderTextColor={t.textFaint}
+                  value={password2}
+                  onChangeText={setPassword2}
+                  secureTextEntry={!showPassword}
+                  textContentType="newPassword"
+                  returnKeyType="done"
+                  onSubmitEditing={handleAuth}
+                  accessibilityLabel="确认密码"
+                />
+                {password2.length > 0 && (
+                  <View style={s.eyeBtn}>
+                    <Ionicons
+                      name={mismatch ? 'close-circle' : 'checkmark-circle'}
+                      size={20}
+                      color={mismatch ? DANGER : t.accent}
+                    />
+                  </View>
+                )}
+              </View>
+              {mismatch && <Text style={s.errorText}>两次输入的密码不一致</Text>}
+            </View>
+          )}
+
           <TouchableOpacity
             style={s.btn}
             onPress={handleAuth}
@@ -298,7 +339,7 @@ export default function AuthScreen() {
 
           {/* 底部切换：没有账号的人明确看到"去注册"，而不是靠上方小字猜 */}
           <TouchableOpacity
-            onPress={() => setIsLogin(!isLogin)}
+            onPress={() => { setIsLogin(!isLogin); setPassword2(''); }}
             accessibilityRole="button"
             accessibilityLabel={isLogin ? '没有账号，去注册' : '已有账号，去登录'}
             style={s.switchRow}
@@ -381,6 +422,8 @@ const makeStyles = (t) => StyleSheet.create({
     shadowOffset: { width: 0, height: 10 },
   },
   btnText: { color: t.onAccent, fontSize: 16, fontFamily: FONTS.uiBold },
+  inputError: { borderColor: DANGER },
+  errorText: { fontSize: 12.5, color: DANGER, fontFamily: FONTS.ui, marginTop: 7 },
   pendingEmail: { color: t.textPrimary, fontFamily: FONTS.uiBold },
   steps: {
     backgroundColor: t.card, borderRadius: RADIUS.btn,

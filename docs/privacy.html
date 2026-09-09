@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>隐私政策 · 铁记</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700&family=Manrope:wght@400;500;600;700&display=swap">
+<style>
+  :root{
+    --bg:#F1F0EC; --card:#FFFFFF; --text:#1B1A16; --muted:#807D75; --faint:#A9A69D;
+    --border:#E7E5DE; --accent:#1F77D6; --accent-bg:#E6F0FB; --accent-ink:#185FA6;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#0D0D0C; --card:#181816; --text:#F3F2EC; --muted:#918E84; --faint:#66635B;
+      --border:#292824; --accent:#5AB0FF; --accent-bg:#0E2234; --accent-ink:#9FD2FF;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0D0D0C; --card:#181816; --text:#F3F2EC; --muted:#918E84; --faint:#66635B;
+    --border:#292824; --accent:#5AB0FF; --accent-bg:#0E2234; --accent-ink:#9FD2FF;
+  }
+
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:'Manrope',-apple-system,BlinkMacSystemFont,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:680px; margin:0 auto; padding:64px 24px 96px;}
+
+  .badge{
+    display:inline-flex; align-items:center; gap:8px;
+    background:var(--card); border:1px solid var(--border); border-radius:999px;
+    padding:6px 14px 6px 8px; margin-bottom:28px;
+  }
+  .badge-mark{
+    width:22px; height:22px; border-radius:7px; background:var(--accent);
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Sora',sans-serif; font-weight:700; font-size:12px; color:#fff;
+  }
+  .badge-text{font-size:13px; font-weight:600; color:var(--muted); letter-spacing:.2px;}
+
+  h1{
+    font-family:'Sora',sans-serif; font-weight:700; font-size:34px;
+    letter-spacing:-.6px; margin:0 0 10px; text-wrap:balance; color:var(--text);
+  }
+  .meta{font-size:14px; color:var(--faint); margin:0 0 40px; font-variant-numeric:tabular-nums;}
+
+  .lede{
+    font-size:16px; line-height:1.7; color:var(--muted); margin:0 0 36px;
+    padding-bottom:36px; border-bottom:1px solid var(--border);
+  }
+
+  .glance{
+    display:grid; grid-template-columns:1fr 1fr; gap:1px;
+    background:var(--border); border:1px solid var(--border); border-radius:16px;
+    overflow:hidden; margin-bottom:44px;
+  }
+  .glance-cell{background:var(--card); padding:18px 20px;}
+  .glance-label{
+    font-size:11px; font-weight:700; color:var(--accent-ink); letter-spacing:.6px;
+    text-transform:uppercase; margin-bottom:6px; font-family:'Manrope',sans-serif;
+  }
+  .glance-value{font-size:14px; color:var(--text); line-height:1.5;}
+
+  section{margin-bottom:40px;}
+  h2{
+    font-family:'Sora',sans-serif; font-weight:600; font-size:19px;
+    color:var(--text); margin:0 0 14px; letter-spacing:-.2px;
+  }
+  h2 .num{color:var(--faint); font-weight:400; margin-right:8px;}
+
+  p{font-size:15px; line-height:1.75; color:var(--text); margin:0 0 12px; max-width:62ch;}
+  p.muted{color:var(--muted);}
+
+  ul{margin:0 0 12px; padding-left:0; list-style:none;}
+  li{
+    font-size:15px; line-height:1.7; color:var(--text);
+    padding:10px 0 10px 22px; border-top:1px solid var(--border); position:relative;
+  }
+  li:first-child{border-top:none;}
+  li::before{
+    content:"";
+    position:absolute; left:0; top:19px; width:6px; height:6px; border-radius:50%;
+    background:var(--accent);
+  }
+  li b{font-weight:600;}
+  li .desc{color:var(--muted); display:block; margin-top:2px;}
+
+  .contact{
+    background:var(--card); border:1px solid var(--border); border-radius:16px;
+    padding:24px 26px; margin-top:8px;
+  }
+  .contact h2{margin-bottom:8px;}
+  .contact a{color:var(--accent-ink); font-weight:600; text-decoration:none;}
+  .contact a:hover{text-decoration:underline;}
+  .contact a:focus-visible, a:focus-visible{outline:2px solid var(--accent); outline-offset:2px; border-radius:4px;}
+
+  footer{
+    margin-top:56px; padding-top:20px; border-top:1px solid var(--border);
+    font-size:12.5px; color:var(--faint);
+  }
+
+  @media (prefers-reduced-motion:no-preference){
+    .wrap{animation:rise .5s ease-out;}
+    @keyframes rise{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:none;}}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="badge">
+    <span class="badge-mark">铁</span>
+    <span class="badge-text">铁记 GymTracker</span>
+  </div>
+
+  <h1>隐私政策</h1>
+  <p class="meta">生效日期：2026 年 9 月 7 日</p>
+
+  <p class="lede">
+    铁记是一款个人开发的健身记录 App，用于记录你在不同健身房、不同器械上的训练数据。
+    这份文件说明我们收集什么信息、为什么收集，以及你能如何控制自己的数据——
+    尽量用你能看懂的话说清楚，而不是塞满法律术语。
+  </p>
+
+  <div class="glance">
+    <div class="glance-cell">
+      <div class="glance-label">开发者</div>
+      <div class="glance-value">个人开发者独立运营，非公司产品</div>
+    </div>
+    <div class="glance-cell">
+      <div class="glance-label">数据存储</div>
+      <div class="glance-value">Supabase（云数据库服务商），全程 HTTPS 加密传输</div>
+    </div>
+    <div class="glance-cell">
+      <div class="glance-label">是否出售数据</div>
+      <div class="glance-value">不会。不向任何第三方出售或用于广告投放</div>
+    </div>
+    <div class="glance-cell">
+      <div class="glance-label">账号删除</div>
+      <div class="glance-value">App 内"我的"页面可自助删除账号与全部数据，无需联系我们</div>
+    </div>
+  </div>
+
+  <section>
+    <h2><span class="num">01</span>我们收集哪些信息</h2>
+    <p class="muted">只收集运行这款 App 所必需的信息，分三类：</p>
+    <ul>
+      <li>
+        <b>账号信息</b>
+        <span class="desc">邮箱地址（邮箱注册/登录时）；若使用"通过 Apple 登录"，则是 Apple 提供的身份标识和邮箱（可能是 Apple 生成的隐藏中转邮箱）。密码由 Supabase 加密存储，铁记本身不会接触到你的明文密码。</span>
+      </li>
+      <li>
+        <b>个人资料（可选）</b>
+        <span class="desc">昵称、性别、出生日期、身高、体重、所在城市、头像照片——这些字段完全由你决定是否填写。</span>
+      </li>
+      <li>
+        <b>训练数据</b>
+        <span class="desc">你添加的健身房和器械名称、训练记录（日期、重量、组数、容量）、自定义分类——这是 App 的核心功能数据，用于跨设备同步你的训练记录。</span>
+      </li>
+    </ul>
+  </section>
+
+  <section>
+    <h2><span class="num">02</span>数据用来做什么</h2>
+    <p>
+      收集这些信息唯一的目的，是让铁记正常工作：验证你的身份、把你的训练记录保存下来、
+      在你换设备或重装 App 时把数据同步回来。我们不会用这些数据做广告定向，
+      也不会把它们卖给或分享给任何数据经纪商、广告平台。
+    </p>
+  </section>
+
+  <section>
+    <h2><span class="num">03</span>数据由谁存储</h2>
+    <p>
+      训练数据和账号信息存放在 <b>Supabase</b>（一家提供云数据库和身份认证服务的第三方公司）。
+      数据在传输过程中全程使用 HTTPS 加密。使用"通过 Apple 登录"时，身份验证的一部分由
+      <b>Apple</b> 处理，遵循 Apple 自己的隐私政策。铁记本身不运营额外的服务器来存储或转发你的个人信息。
+    </p>
+  </section>
+
+  <section>
+    <h2><span class="num">04</span>你的权利与选择</h2>
+    <ul>
+      <li>
+        <b>随时可以删除训练数据</b>
+        <span class="desc">App 内"我的"页面提供"清除所有训练数据"功能，操作后立即在服务器上生效，不可撤回。</span>
+      </li>
+      <li>
+        <b>可以自助删除整个账号</b>
+        <span class="desc">"我的"页面底部提供"删除账号"入口，两次确认后立即永久删除你的账号、个人资料、头像和全部训练记录，不需要联系开发者，也没有等待期。删除后无法恢复。</span>
+      </li>
+      <li>
+        <b>个人资料字段均可编辑或留空</b>
+        <span class="desc">昵称、身高体重等资料随时可以在"我的"页面修改，或直接不填。</span>
+      </li>
+    </ul>
+  </section>
+
+  <section>
+    <h2><span class="num">05</span>儿童隐私</h2>
+    <p>
+      铁记不面向 13 周岁以下儿童设计，也不会有意收集儿童的个人信息。
+      如果你发现儿童在未经监护人同意的情况下使用了本 App 并提供了个人信息，请联系我们，我们会尽快处理。
+    </p>
+  </section>
+
+  <section>
+    <h2><span class="num">06</span>政策更新</h2>
+    <p>
+      如果这份政策有实质性变化，我们会更新本页顶部的生效日期。
+      建议偶尔回来看看，尤其是在 App 更新说明中提到隐私相关调整时。
+    </p>
+  </section>
+
+  <div class="contact">
+    <h2>联系方式</h2>
+    <p class="muted" style="margin-bottom:14px;">
+      删除账号和清除数据都可以在 App 内自己完成，不必等我们回复。
+      其它隐私相关的问题，欢迎直接发邮件：
+    </p>
+    <a href="mailto:lawson970854@gmail.com">lawson970854@gmail.com</a>
+  </div>
+
+  <footer>
+    铁记（GymTracker）· 个人开发者独立项目 · 本页面最后更新于 2026 年 9 月 7 日
+  </footer>
+
+</div>
+</body>
+</html>
