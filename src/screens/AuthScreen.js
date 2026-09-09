@@ -23,6 +23,8 @@ export default function AuthScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [appleAvailable, setAppleAvailable] = useState(false);
   const [lastMethod, setLastMethod] = useState(null);
+  const [pendingEmail, setPendingEmail] = useState(null);
+  const [resent, setResent] = useState(false);
 
   const passwordRef = useRef(null);
 
@@ -74,16 +76,34 @@ export default function AuthScreen() {
         if (error) Alert.alert('登录失败', error.message);
         else rememberMethod('email');
       } else {
-        const { error } = await supabase.auth.signUp({ email: e, password: p });
-        if (error) Alert.alert('注册失败', error.message);
-        else {
+        const { data, error } = await supabase.auth.signUp({ email: e, password: p });
+        if (error) {
+          Alert.alert('注册失败', error.message);
+        } else {
           rememberMethod('email');
-          Alert.alert('注册成功', '请查收验证邮件后登录');
+          // 关闭邮箱验证时 signUp 直接返回会话，App.js 会自动进入主界面；
+          // 开启验证时没有会话，切到"去收邮件"的页面状态，而不是弹个提示框了事。
+          if (!data.session) setPendingEmail(e);
         }
       }
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleResend = async () => {
+    const { error } = await supabase.auth.resend({ type: 'signup', email: pendingEmail });
+    if (error) Alert.alert('发送失败', error.message);
+    else {
+      setResent(true);
+      setTimeout(() => setResent(false), 4000);
+    }
+  };
+
+  const backToLogin = () => {
+    setPendingEmail(null);
+    setPassword('');
+    setIsLogin(true);
   };
 
   const handleForgotPassword = () => {
@@ -125,6 +145,44 @@ export default function AuthScreen() {
             />
           </View>
 
+          {pendingEmail ? (
+            <>
+              <Text style={s.title}>去邮箱完成验证</Text>
+              <Text style={s.subtitle}>
+                验证邮件已发送到{'\n'}
+                <Text style={s.pendingEmail}>{pendingEmail}</Text>
+              </Text>
+
+              <View style={s.steps}>
+                <Text style={s.stepLine}>1. 打开邮箱，找到「铁记」的验证邮件</Text>
+                <Text style={s.stepLine}>2. 点击邮件里的确认链接</Text>
+                <Text style={s.stepLine}>3. 回到这里，用刚才的邮箱和密码登录</Text>
+              </View>
+
+              <Text style={s.hint}>没收到？先看看垃圾邮件文件夹。</Text>
+
+              <TouchableOpacity
+                style={s.btn}
+                onPress={handleResend}
+                accessibilityRole="button"
+                accessibilityLabel="重新发送验证邮件"
+              >
+                <Text style={s.btnText}>{resent ? '已重新发送' : '重新发送验证邮件'}</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={backToLogin}
+                accessibilityRole="button"
+                accessibilityLabel="返回登录"
+                style={s.switchRow}
+              >
+                <Text style={s.switchText}>
+                  已经验证好了？<Text style={s.switchLink}> 去登录</Text>
+                </Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+          <>
           {/* 大标题随登录/注册模式切换，用强对比取代小字提示 */}
           <Text style={s.title}>{isLogin ? '欢迎回来' : '创建你的账号'}</Text>
           <Text style={s.subtitle}>
@@ -250,6 +308,8 @@ export default function AuthScreen() {
               <Text style={s.switchLink}>{isLogin ? ' 去注册' : ' 去登录'}</Text>
             </Text>
           </TouchableOpacity>
+          </>
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -321,6 +381,14 @@ const makeStyles = (t) => StyleSheet.create({
     shadowOffset: { width: 0, height: 10 },
   },
   btnText: { color: t.onAccent, fontSize: 16, fontFamily: FONTS.uiBold },
+  pendingEmail: { color: t.textPrimary, fontFamily: FONTS.uiBold },
+  steps: {
+    backgroundColor: t.card, borderRadius: RADIUS.btn,
+    borderWidth: 1, borderColor: t.border,
+    paddingVertical: 16, paddingHorizontal: 18, gap: 10,
+  },
+  stepLine: { fontSize: 14, color: t.textPrimary, fontFamily: FONTS.ui, lineHeight: 20 },
+  hint: { fontSize: 13, color: t.textMuted, fontFamily: FONTS.ui, marginTop: 14, textAlign: 'center' },
   switchRow: { marginTop: 22, alignItems: 'center' },
   switchText: { fontSize: 14, color: t.textMuted, fontFamily: FONTS.ui },
   switchLink: { color: t.accentInk, fontFamily: FONTS.uiBold },
