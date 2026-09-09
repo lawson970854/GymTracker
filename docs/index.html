@@ -104,8 +104,14 @@
     document.getElementById('ok').hidden = true;
     document.getElementById('bad').hidden = false;
     document.getElementById('card').classList.add('bad');
-    var desc = params.get('error_description');
-    if (desc) document.getElementById('badmsg').textContent = decodeURIComponent(desc.replace(/\+/g, ' '));
+    // Supabase 返回的 error_description 是英文，不直接展示；
+    // 已知错误码翻成中文，其余沿用页面上的默认说明。
+    var zh = {
+      otp_expired: '这个链接已经过期了。验证邮件有有效期，请重新获取一封。',
+      access_denied: '这个链接已经失效，可能已经被使用过了。',
+    };
+    var msg = zh[params.get('error_code')] || zh[params.get('error')];
+    if (msg) document.getElementById('badmsg').textContent = msg;
   }
 </script>
 </body>
