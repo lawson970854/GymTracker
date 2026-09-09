@@ -42,7 +42,15 @@
         }
       ],
       "@react-native-community/datetimepicker",
-      "expo-font"
+      "expo-font",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "铁记需要访问你的照片图库，以便你选择一张照片作为个人资料头像。所选照片仅用于显示你的头像，不会用于其他用途。",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
+      ]
     ],
     "experiments": {
       "reactCompiler": true
