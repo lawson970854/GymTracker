@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>技术支持 · 铁记</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700&family=Manrope:wght@400;500;600;700&display=swap">
+<style>
+  :root{
+    --navy:#202636; --navy-deep:#181D2A; --card:#FFFFFF; --bg:#F1F0EC;
+    --text:#1B1A16; --muted:#7C7970; --border:#E4E2DB;
+    --warm:#F2604B; --warm-2:#FA8F66; --ok:#0E9F6E;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --card:#1C1D23; --bg:#131318; --text:#EFEEE9; --muted:#94918A; --border:#2C2D34;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:'Manrope',-apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif;
+    -webkit-font-smoothing:antialiased; line-height:1.65;
+  }
+  .wrap{max-width:660px; margin:0 auto; padding:56px 22px 88px;}
+
+  .badge{
+    display:inline-flex; align-items:center; gap:9px;
+    background:var(--card); border:1px solid var(--border); border-radius:999px;
+    padding:6px 15px 6px 7px; margin-bottom:26px;
+  }
+  .badge-mark{
+    width:24px; height:24px; border-radius:8px;
+    background:linear-gradient(135deg,var(--warm),var(--warm-2));
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Sora',sans-serif; font-weight:700; font-size:12px; color:#fff;
+  }
+  .badge-text{font-size:13px; font-weight:600; color:var(--muted); letter-spacing:.2px;}
+
+  h1{
+    font-family:'Sora',sans-serif; font-weight:700; font-size:34px;
+    letter-spacing:-.6px; margin:0 0 10px; text-wrap:balance;
+  }
+  .lede{
+    font-size:16px; color:var(--muted); margin:0 0 34px;
+    padding-bottom:30px; border-bottom:1px solid var(--border);
+  }
+
+  h2{
+    font-family:'Sora',sans-serif; font-weight:600; font-size:19px;
+    margin:36px 0 12px; letter-spacing:-.2px;
+  }
+  p{font-size:15px; margin:0 0 12px; max-width:60ch;}
+  p.muted{color:var(--muted);}
+
+  .contact{
+    background:var(--card); border:1px solid var(--border); border-radius:16px;
+    padding:22px 24px; margin:8px 0 4px;
+  }
+  .contact-label{
+    font-size:11.5px; font-weight:700; color:var(--muted);
+    letter-spacing:.8px; text-transform:uppercase; margin-bottom:7px;
+  }
+  .contact a{
+    font-size:18px; font-weight:700; color:var(--warm); text-decoration:none;
+    font-family:'Sora',sans-serif;
+  }
+  .contact a:hover{text-decoration:underline;}
+  a:focus-visible{outline:2px solid var(--warm); outline-offset:3px; border-radius:4px;}
+  .reply{font-size:13px; color:var(--muted); margin-top:10px;}
+
+  .faq{list-style:none; padding:0; margin:0;}
+  .faq li{
+    padding:16px 0; border-top:1px solid var(--border);
+  }
+  .faq li:first-child{border-top:none;}
+  .q{font-size:15px; font-weight:700; margin:0 0 5px;}
+  .a{font-size:14.5px; color:var(--muted); margin:0;}
+  .a b{color:var(--text); font-weight:600;}
+
+  footer{
+    margin-top:48px; padding-top:20px; border-top:1px solid var(--border);
+    font-size:12.5px; color:var(--muted);
+  }
+  footer a{color:var(--muted);}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="badge">
+    <span class="badge-mark">铁</span>
+    <span class="badge-text">铁记 GymTracker</span>
+  </div>
+
+  <h1>技术支持</h1>
+  <p class="lede">
+    使用中遇到问题、有功能建议，或者需要处理账号相关的事情，都可以从这里联系到我们。
+  </p>
+
+  <h2>联系我们</h2>
+  <div class="contact">
+    <div class="contact-label">电子邮件</div>
+    <a href="mailto:lawson970854@gmail.com">lawson970854@gmail.com</a>
+    <p class="reply">
+      铁记由个人开发者独立维护，通常会在 1–2 个工作日内回复。
+      如果是 App 崩溃或数据异常，请在邮件里附上你使用的 iPhone 型号和 iOS 版本，能帮我们更快定位。
+    </p>
+  </div>
+
+  <h2>常见问题</h2>
+  <ul class="faq">
+    <li>
+      <p class="q">换了新手机，训练记录还在吗？</p>
+      <p class="a">在。所有数据都保存在云端，在新设备上用同一个账号登录即可恢复，无需手动备份或导出。</p>
+    </li>
+    <li>
+      <p class="q">注册后没有收到验证邮件怎么办？</p>
+      <p class="a">先检查垃圾邮件文件夹。仍然没有的话，在注册完成后的页面点<b>「重新发送验证邮件」</b>再获取一封。</p>
+    </li>
+    <li>
+      <p class="q">忘记密码了怎么办？</p>
+      <p class="a">在登录页输入邮箱后点<b>「忘记密码？」</b>，我们会发送一封重置邮件，按邮件中的提示设置新密码后即可登录。</p>
+    </li>
+    <li>
+      <p class="q">怎么删除我的账号和数据？</p>
+      <p class="a">打开 App，进入底部<b>「我的」</b>页面，滑到底部点<b>「删除账号」</b>并完成两次确认。账号、个人资料、头像和全部训练记录会被立即永久删除，<b>此操作无法撤销</b>。如果只想清空训练数据、保留账号，同一位置提供<b>「清除所有数据」</b>。</p>
+    </li>
+    <li>
+      <p class="q">「分类」是用来做什么的？</p>
+      <p class="a">把不同健身房里练同一部位的器械归到一组，就能横向比较同一个动作在各处的表现——这对在多个健身房训练的人尤其有用，因为不同器械的重量本来无法直接比较。</p>
+    </li>
+    <li>
+      <p class="q">训练量是怎么算的？</p>
+      <p class="a">训练量 = 重量 × 各组次数之和。例如 50 千克做 3 组、每组 10 次，训练量为 50 × 30 = 1500 千克·次。</p>
+    </li>
+  </ul>
+
+  <footer>
+    铁记（GymTracker）· 个人开发者独立项目 ·
+    <a href="privacy.html">隐私政策</a>
+  </footer>
+
+</div>
+</body>
+</html>
