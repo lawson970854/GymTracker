@@ -1,0 +1,36 @@
+# EAS Build 上传时用这个文件替代 .gitignore，所以 .gitignore 的内容必须在这里重复一遍，
+# 否则 node_modules 等会被打进上传包。
+
+# --- 以下与 .gitignore 保持一致 ---
+node_modules/
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+.metro-health-check*
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+.DS_Store
+*.pem
+.env*.local
+*.tsbuildinfo
+example
+/ios
+/android
+
+# --- 以下是构建用不到、只会拖慢上传的素材 ---
+# 图标设计稿（15MB）和 App Store 截图（5MB）：只在本地和商店后台用，
+# 打包进上传包会让 tarball 从 <1MB 涨到 20MB+，上传更容易中断。
+LOGO/
+screenshots/
+
+# GitHub Pages 的隐私政策与技术支持页：由 Pages 托管，与 App 二进制无关。
+docs/
