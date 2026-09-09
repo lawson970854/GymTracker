@@ -1,6 +1,6 @@
 import React, { useState, useRef, useMemo, useEffect } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity,
+  View, Text, TextInput, TouchableOpacity, Image,
   StyleSheet, KeyboardAvoidingView, Platform, Alert,
   ActivityIndicator, SafeAreaView, ScrollView,
 } from 'react-native';
@@ -117,8 +117,12 @@ export default function AuthScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <View style={s.logoBadge}>
-            <Ionicons name="barbell-outline" size={36} color={t.onAccent} />
+          <View style={s.logoShadow}>
+            <Image
+              source={require('../../assets/images/icon.png')}
+              style={s.logoImage}
+              accessibilityIgnoresInvertColors
+            />
           </View>
 
           {/* 大标题随登录/注册模式切换，用强对比取代小字提示 */}
@@ -255,14 +259,13 @@ export default function AuthScreen() {
 const makeStyles = (t) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: t.bg },
   scrollContent: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 34, paddingVertical: 40 },
-  logoBadge: {
-    width: 72, height: 72, borderRadius: 20,
-    backgroundColor: t.accent,
-    alignSelf: 'center', alignItems: 'center', justifyContent: 'center',
-    marginBottom: 24,
+  // 阴影和圆角拆到两层：iOS 上同一个 Image 同时设圆角裁剪和阴影会互相冲突
+  logoShadow: {
+    alignSelf: 'center', marginBottom: 24, borderRadius: 18,
     shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 20,
     shadowOffset: { width: 0, height: 12 }, elevation: 6,
   },
+  logoImage: { width: 76, height: 76, borderRadius: 18 },
   title: {
     fontSize: 28, fontFamily: FONTS.numBold, color: t.textPrimary,
     textAlign: 'center', letterSpacing: -0.6,
