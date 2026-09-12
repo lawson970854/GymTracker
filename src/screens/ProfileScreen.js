@@ -11,6 +11,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { fetchGymData, loadProfile, saveProfile, uploadAvatar, clearAllData, deleteAccount } from '../storage';
 import { GYM_DATA_KEY } from '../queryClient';
 import { supabase } from '../supabase';
+import { showAuth } from '../authGate';
 import { useTheme, RADIUS, FONTS, SCHEMES, SCHEME_LABELS } from '../ThemeContext';
 import { REGIONS, PROVINCE_NAMES, findProvinceByCity, getCitiesForProvince } from '../constants/regions';
 
@@ -109,9 +110,22 @@ export default function ProfileScreen() {
   const [editVisible, setEditVisible] = useState(false);
   const [editData, setEditData] = useState({});
   const [avatarUploading, setAvatarUploading] = useState(false);
+  // 未登录也能完整使用，这里只决定「账号」区块显示登录入口还是退出/删除账号
+  const [account, setAccount] = useState(null);
 
   useEffect(() => {
     loadProfile().then(setProfile);
+  }, []);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => setAccount(session?.user ?? null));
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
+      setAccount(session?.user ?? null);
+      // onAuthStateChange 回调里不能直接调 supabase.auth.*（loadProfile 内部会取会话），
+      // 否则会和 supabase 内部的锁互等，推到下一轮事件循环再读
+      setTimeout(() => loadProfile().then(setProfile).catch(() => {}), 0);
+    });
+    return () => subscription.unsubscribe();
   }, []);
 
   const totalMachines = gyms.reduce((sum, g) => sum + (g.machines?.length || 0), 0);
@@ -423,40 +437,84 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        {/* ── 底部操作：日常操作与破坏性操作分区 ── */}
-        <TouchableOpacity
-          style={s.logoutBtn}
-          onPress={() => {
-            Alert.alert('退出登录', '确认退出？', [
-              { text: '取消', style: 'cancel' },
-              { text: '退出', style: 'destructive', onPress: () => supabase.auth.signOut() },
-            ]);
-          }}
-          accessibilityRole="button"
-          accessibilityLabel="退出登录"
-        >
-          <Text style={s.logoutBtnText}>退出登录</Text>
-        </TouchableOpacity>
+        {/* ── 账号：未登录时是可选的云同步入口，不挡任何功能 ── */}
+        <Text style={s.sectionLabel}>账号</Text>
+        {account ? (
+          <>
+            <View style={s.accountCard}>
+              <Ionicons name="cloud-done-outline" size={20} color={theme.accent} />
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={s.accountTitle}>已开启云端同步</Text>
+                <Text style={s.accountDesc} numberOfLines={1}>
+                  {account.email || '已登录'}
+                </Text>
+              </View>
+            </View>
 
+            <TouchableOpacity
+              style={s.logoutBtn}
+              onPress={() => {
+                Alert.alert('退出登录', '退出后仍可继续使用，新记录会存在这台设备上。', [
+                  { text: '取消', style: 'cancel' },
+                  { text: '退出', style: 'destructive', onPress: () => supabase.auth.signOut() },
+                ]);
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="退出登录"
+            >
+              <Text style={s.logoutBtnText}>退出登录</Text>
+            </TouchableOpacity>
+          </>
+        ) : (
+          <>
+            <View style={s.accountCard}>
+              <Ionicons name="phone-portrait-outline" size={20} color={theme.textMuted} />
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={s.accountTitle}>本机模式</Text>
+                <Text style={s.accountDesc}>
+                  训练记录保存在这台设备上，不需要账号
+                </Text>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={s.loginBtn}
+              onPress={showAuth}
+              accessibilityRole="button"
+              accessibilityLabel="登录或注册以开启云端同步"
+            >
+              <Text style={s.loginBtnText}>登录 / 注册，开启云端同步</Text>
+            </TouchableOpacity>
+            <Text style={s.loginHint}>登录后，这台设备上已有的记录会自动搬到云端</Text>
+          </>
+        )}
+
+        {/* ── 破坏性操作 ── */}
         <TouchableOpacity
-          style={s.dangerBtn}
+          style={[s.dangerBtn, !account && s.dangerBtnLast]}
           onPress={handleClearAllData}
           accessibilityRole="button"
           accessibilityLabel="清除所有数据"
         >
           <Text style={s.dangerBtnLabel}>清除所有数据</Text>
-          <Text style={s.dangerBtnDesc}>删除全部健身房、器械和训练记录，账号保留</Text>
+          <Text style={s.dangerBtnDesc}>
+            {account
+              ? '删除全部健身房、器械和训练记录，账号保留'
+              : '删除这台设备上的全部健身房、器械和训练记录'}
+          </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[s.dangerBtn, s.dangerBtnLast]}
-          onPress={handleDeleteAccount}
-          accessibilityRole="button"
-          accessibilityLabel="删除账号"
-        >
-          <Text style={s.dangerBtnLabel}>删除账号</Text>
-          <Text style={s.dangerBtnDesc}>连同账号、个人资料和训练记录一并永久删除</Text>
-        </TouchableOpacity>
+        {account && (
+          <TouchableOpacity
+            style={[s.dangerBtn, s.dangerBtnLast]}
+            onPress={handleDeleteAccount}
+            accessibilityRole="button"
+            accessibilityLabel="删除账号"
+          >
+            <Text style={s.dangerBtnLabel}>删除账号</Text>
+            <Text style={s.dangerBtnDesc}>连同账号、个人资料和训练记录一并永久删除</Text>
+          </TouchableOpacity>
+        )}
 
       </ScrollView>
 
@@ -836,6 +894,29 @@ const makeStyles = (t, isDark) => {
 
   // Bottom buttons
   // 三个底部操作共用同一形态：等高、等圆角、居中内容，只靠颜色区分危险程度
+  sectionLabel: {
+    fontSize: 11.5, fontFamily: FONTS.uiBold, color: t.textMuted,
+    letterSpacing: 1.6, textTransform: 'uppercase',
+    marginHorizontal: 16, marginTop: 28, marginBottom: 10,
+  },
+  accountCard: {
+    marginHorizontal: 16, paddingHorizontal: 16, paddingVertical: 14,
+    borderRadius: RADIUS.btn, backgroundColor: t.card,
+    borderWidth: 1, borderColor: t.border,
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+  },
+  accountTitle: { fontSize: 15, fontFamily: FONTS.uiBold, color: t.textPrimary },
+  accountDesc: { fontSize: 12.5, color: t.textMuted, fontFamily: FONTS.ui, marginTop: 2 },
+  loginBtn: {
+    marginHorizontal: 16, marginTop: 12,
+    height: ACTION_BTN_HEIGHT, borderRadius: RADIUS.btn,
+    backgroundColor: t.accent, alignItems: 'center', justifyContent: 'center',
+  },
+  loginBtnText: { color: t.onAccent, fontSize: 15, fontFamily: FONTS.uiBold },
+  loginHint: {
+    marginHorizontal: 16, marginTop: 8,
+    fontSize: 12, color: t.textFaint, fontFamily: FONTS.ui, textAlign: 'center',
+  },
   logoutBtn: {
     marginHorizontal: 16, marginTop: 12,
     height: ACTION_BTN_HEIGHT, borderRadius: RADIUS.btn,

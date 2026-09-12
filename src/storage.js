@@ -1,6 +1,7 @@
 import * as FileSystem from 'expo-file-system/legacy';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from './supabase';
+import * as local from './localStore';
 
 const PROFILE_CACHE_KEY = '@gymtracker:profile';
 
@@ -9,10 +10,13 @@ async function getUserId() {
   return session?.user?.id;
 }
 
+// 记录功能不需要账号：没有登录会话时，所有读写都落到本机的 localStore，
+// 登录之后才走 Supabase 云端（并在登录那一刻把本地数据搬上去，见 migrateLocalDataToCloud）。
+
 // ── 核心查询函数（TanStack Query 使用）────────────────
 export async function fetchGymData() {
   const userId = await getUserId();
-  if (!userId) return { gyms: [], records: [], categories: [] };
+  if (!userId) return local.readLocalData();
 
   const [gymsRes, machinesRes, recordsRes, categoriesRes, itemsRes] = await Promise.all([
     supabase.from('gyms').select('*').eq('user_id', userId),
@@ -54,6 +58,7 @@ export async function fetchGymData() {
 // ── 写操作（各屏幕 useMutation 使用）─────────────────
 export async function addGym(name) {
   const userId = await getUserId();
+  if (!userId) return local.addGym(name);
   const { data, error } = await supabase.from('gyms')
     .insert({ name, user_id: userId }).select().single();
   if (error) throw error;
@@ -61,17 +66,22 @@ export async function addGym(name) {
 }
 
 export async function deleteGym(gymId) {
+  const userId = await getUserId();
+  if (!userId) return local.deleteGym(gymId);
   const { error } = await supabase.from('gyms').delete().eq('id', gymId);
   if (error) throw error;
 }
 
 export async function updateGymName(gymId, name) {
+  const userId = await getUserId();
+  if (!userId) return local.updateGymName(gymId, name);
   const { error } = await supabase.from('gyms').update({ name }).eq('id', gymId);
   if (error) throw error;
 }
 
 export async function addMachine(gymId, name, categoryId) {
   const userId = await getUserId();
+  if (!userId) return local.addMachine(gymId, name, categoryId);
   const { data, error } = await supabase.from('machines')
     .insert({ gym_id: gymId, name, user_id: userId }).select().single();
   if (error) throw error;
@@ -85,17 +95,22 @@ export async function addMachine(gymId, name, categoryId) {
 }
 
 export async function deleteMachine(machineId) {
+  const userId = await getUserId();
+  if (!userId) return local.deleteMachine(machineId);
   const { error } = await supabase.from('machines').delete().eq('id', machineId);
   if (error) throw error;
 }
 
 export async function updateMachineName(machineId, name) {
+  const userId = await getUserId();
+  if (!userId) return local.updateMachineName(machineId, name);
   const { error } = await supabase.from('machines').update({ name }).eq('id', machineId);
   if (error) throw error;
 }
 
 export async function addRecord(record) {
   const userId = await getUserId();
+  if (!userId) return local.addRecord(record);
   const { data, error } = await supabase.from('records').insert({
     user_id: userId,
     gym_id: record.gymId,
@@ -110,6 +125,8 @@ export async function addRecord(record) {
 }
 
 export async function updateRecord(record) {
+  const userId = await getUserId();
+  if (!userId) return local.updateRecord(record);
   const { error } = await supabase.from('records').update({
     date: record.date,
     weight: record.weight,
@@ -120,12 +137,15 @@ export async function updateRecord(record) {
 }
 
 export async function deleteRecord(recordId) {
+  const userId = await getUserId();
+  if (!userId) return local.deleteRecord(recordId);
   const { error } = await supabase.from('records').delete().eq('id', recordId);
   if (error) throw error;
 }
 
 export async function addCategory(name) {
   const userId = await getUserId();
+  if (!userId) return local.addCategory(name);
   const { data, error } = await supabase.from('categories')
     .insert({ name, user_id: userId }).select().single();
   if (error) throw error;
@@ -133,17 +153,22 @@ export async function addCategory(name) {
 }
 
 export async function deleteCategory(categoryId) {
+  const userId = await getUserId();
+  if (!userId) return local.deleteCategory(categoryId);
   const { error } = await supabase.from('categories').delete().eq('id', categoryId);
   if (error) throw error;
 }
 
 export async function updateCategoryName(categoryId, name) {
+  const userId = await getUserId();
+  if (!userId) return local.updateCategoryName(categoryId, name);
   const { error } = await supabase.from('categories').update({ name }).eq('id', categoryId);
   if (error) throw error;
 }
 
 export async function addCategoryItem(categoryId, gymId, machineId) {
   const userId = await getUserId();
+  if (!userId) return local.addCategoryItem(categoryId, gymId, machineId);
   const { error } = await supabase.from('category_items').insert({
     category_id: categoryId, gym_id: gymId, machine_id: machineId, user_id: userId,
   });
@@ -151,6 +176,8 @@ export async function addCategoryItem(categoryId, gymId, machineId) {
 }
 
 export async function removeCategoryItem(categoryId, gymId, machineId) {
+  const userId = await getUserId();
+  if (!userId) return local.removeCategoryItem(categoryId, gymId, machineId);
   const { error } = await supabase.from('category_items').delete()
     .eq('category_id', categoryId).eq('gym_id', gymId).eq('machine_id', machineId);
   if (error) throw error;
@@ -175,7 +202,7 @@ function mapProfileData(data) {
 
 export async function loadProfile() {
   const userId = await getUserId();
-  if (!userId) return { ...DEFAULT_PROFILE };
+  if (!userId) return local.loadProfile();
 
   // 优先读本地缓存（几毫秒，App 打开即可渲染）
   try {
@@ -195,7 +222,7 @@ export async function loadProfile() {
 
 export async function saveProfile(profile) {
   const userId = await getUserId();
-  if (!userId) return;
+  if (!userId) return local.saveProfile(profile);
 
   // 先更新本地缓存，保证下次打开立即可用
   try {
@@ -217,7 +244,8 @@ export async function saveProfile(profile) {
 
 export async function uploadAvatar(localUri) {
   const userId = await getUserId();
-  if (!userId) throw new Error('未登录');
+  // 未登录时没有云端存储桶可用，把图片留在本机
+  if (!userId) return local.saveAvatarLocally(localUri);
 
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) throw new Error('未登录');
@@ -248,12 +276,98 @@ export async function uploadAvatar(localUri) {
   return `${publicUrl}?t=${Date.now()}`;
 }
 
+// ── 本地数据上云：未登录期间记的东西，登录后不能丢 ─────
+// 由 App.js 在检测到「刚刚从未登录状态登录」时调用。
+export async function migrateLocalDataToCloud() {
+  const userId = await getUserId();
+  if (!userId) return false;
+
+  const { gyms, records, categories } = await local.readLocalData();
+  const localProfile = await local.loadProfile();
+  const hasProfile = Object.values(localProfile).some(v => v);
+  if (!gyms.length && !records.length && !categories.length && !hasProfile) return false;
+
+  // 本地 id 与云端新生成的 id 的映射，后面的记录/分类项要靠它换算
+  const gymIdMap = {};
+  const machineIdMap = {};
+
+  for (const gym of gyms) {
+    const { data, error } = await supabase.from('gyms')
+      .insert({ name: gym.name, user_id: userId }).select().single();
+    if (error) throw error;
+    gymIdMap[gym.id] = data.id;
+
+    for (const machine of gym.machines || []) {
+      const { data: m, error: mErr } = await supabase.from('machines')
+        .insert({ gym_id: data.id, name: machine.name, user_id: userId }).select().single();
+      if (mErr) throw mErr;
+      machineIdMap[machine.id] = m.id;
+    }
+  }
+
+  for (const cat of categories) {
+    const { data, error } = await supabase.from('categories')
+      .insert({ name: cat.name, user_id: userId }).select().single();
+    if (error) throw error;
+    const items = (cat.items || [])
+      .filter(i => gymIdMap[i.gymId] && machineIdMap[i.machineId])
+      .map(i => ({
+        category_id: data.id,
+        gym_id: gymIdMap[i.gymId],
+        machine_id: machineIdMap[i.machineId],
+        user_id: userId,
+      }));
+    if (items.length) {
+      const { error: itemErr } = await supabase.from('category_items').insert(items);
+      if (itemErr) throw itemErr;
+    }
+  }
+
+  const rows = records
+    .filter(r => gymIdMap[r.gymId] && machineIdMap[r.machineId])
+    .map(r => ({
+      user_id: userId,
+      gym_id: gymIdMap[r.gymId],
+      machine_id: machineIdMap[r.machineId],
+      date: r.date,
+      weight: r.weight,
+      sets: r.sets,
+      volume: r.volume,
+    }));
+  if (rows.length) {
+    const { error } = await supabase.from('records').insert(rows);
+    if (error) throw error;
+  }
+
+  // 个人资料：只在云端还是空的时候用本地那份覆盖，不能盖掉账号上已有的资料
+  if (hasProfile) {
+    const { data: existing } = await supabase.from('profiles').select('*').eq('id', userId).single();
+    const cloudEmpty = !existing || !Object.values(mapProfileData(existing)).some(v => v);
+    if (cloudEmpty) {
+      let profile = localProfile;
+      // 本地头像是设备上的文件路径，换设备就看不到了，顺手传到云端存储桶
+      if (profile.avatarUrl?.startsWith('file://')) {
+        try {
+          profile = { ...profile, avatarUrl: await uploadAvatar(profile.avatarUrl) };
+        } catch {
+          profile = { ...profile, avatarUrl: '' };
+        }
+      }
+      await saveProfile(profile);
+    }
+  }
+
+  // 全部搬完才清空本地，中途失败下次登录还能重试
+  await local.clearEverything();
+  return true;
+}
+
 // ── 危险操作：一键清除所有训练数据 ─────────────────────
 // 清除范围：records / category_items / machines / categories / gyms
 // 不影响：profiles / 头像 / 账户本身
 export async function clearAllData() {
   const userId = await getUserId();
-  if (!userId) throw new Error('未登录');
+  if (!userId) return local.clearAllData();
   // 顺序很重要：先删依赖表，再删被依赖表，避免外键约束报错
   const tables = ['records', 'category_items', 'machines', 'categories', 'gyms'];
   for (const t of tables) {
@@ -285,3 +399,6 @@ export function getBestRecord(records, gymId, machineId) {
 export function today() {
   return new Date().toISOString().slice(0, 10);
 }
+
+// 本机还有没有未上云的数据（登录时决定要不要走搬运流程）
+export { hasLocalData } from './localStore';

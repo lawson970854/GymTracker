@@ -13,7 +13,7 @@ import { useTheme, RADIUS, FONTS } from '../ThemeContext';
 const LAST_METHOD_KEY = '@gymtracker:lastAuthMethod';
 const DANGER = '#E5484D';
 
-export default function AuthScreen() {
+export default function AuthScreen({ onSkip }) {
   const { theme: t, isDark } = useTheme();
   const s = useMemo(() => makeStyles(t), [t]);
 
@@ -190,13 +190,29 @@ export default function AuthScreen() {
                   已经验证好了？<Text style={s.switchLink}> 去登录</Text>
                 </Text>
               </TouchableOpacity>
+
+              {onSkip && (
+                <TouchableOpacity
+                  onPress={onSkip}
+                  accessibilityRole="button"
+                  accessibilityLabel="稍后再说，先不登录使用"
+                  style={s.skipRow}
+                >
+                  <Text style={s.skipText}>稍后再说，先不登录使用</Text>
+                </TouchableOpacity>
+              )}
             </>
           ) : (
           <>
           {/* 大标题随登录/注册模式切换，用强对比取代小字提示 */}
           <Text style={s.title}>{isLogin ? '欢迎回来' : '创建你的账号'}</Text>
           <Text style={s.subtitle}>
-            {isLogin ? '登录铁记，继续记录你的训练' : '注册铁记，开始记录你的训练'}
+            {isLogin
+              ? '登录后，训练记录会同步到云端，换设备也能接着用'
+              : '注册后，训练记录会同步到云端，换设备也能接着用'}
+          </Text>
+          <Text style={s.localNote}>
+            不登录也能记录，数据保存在这台设备上
           </Text>
 
           {appleAvailable && (
@@ -349,6 +365,17 @@ export default function AuthScreen() {
               <Text style={s.switchLink}>{isLogin ? ' 去注册' : ' 去登录'}</Text>
             </Text>
           </TouchableOpacity>
+
+          {onSkip && (
+            <TouchableOpacity
+              onPress={onSkip}
+              accessibilityRole="button"
+              accessibilityLabel="稍后再说，先不登录使用"
+              style={s.skipRow}
+            >
+              <Text style={s.skipText}>稍后再说，先不登录使用</Text>
+            </TouchableOpacity>
+          )}
           </>
           )}
         </ScrollView>
@@ -373,7 +400,11 @@ const makeStyles = (t) => StyleSheet.create({
   },
   subtitle: {
     fontSize: 14, textAlign: 'center', color: t.textMuted,
-    marginTop: 8, marginBottom: 32, fontFamily: FONTS.ui,
+    marginTop: 8, fontFamily: FONTS.ui,
+  },
+  localNote: {
+    fontSize: 12.5, textAlign: 'center', color: t.textFaint,
+    marginTop: 6, marginBottom: 32, fontFamily: FONTS.ui,
   },
   appleWrap: { position: 'relative' },
   appleBtn: { height: 50 },
@@ -433,6 +464,8 @@ const makeStyles = (t) => StyleSheet.create({
   stepLine: { fontSize: 14, color: t.textPrimary, fontFamily: FONTS.ui, lineHeight: 20 },
   hint: { fontSize: 13, color: t.textMuted, fontFamily: FONTS.ui, marginTop: 14, textAlign: 'center' },
   switchRow: { marginTop: 22, alignItems: 'center' },
+  skipRow: { marginTop: 18, alignItems: 'center', paddingVertical: 8 },
+  skipText: { fontSize: 14, color: t.textMuted, fontFamily: FONTS.uiBold },
   switchText: { fontSize: 14, color: t.textMuted, fontFamily: FONTS.ui },
   switchLink: { color: t.accentInk, fontFamily: FONTS.uiBold },
 });
