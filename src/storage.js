@@ -19,12 +19,16 @@ export async function fetchGymData() {
   const userId = await getUserId();
   if (!userId) return local.readLocalData();
 
+  // 必须显式排序。不写 ORDER BY 时 Postgres 按物理存储顺序返回，而 UPDATE 在
+  // MVCC 下不是原地修改 —— 它写一个新行版本追加到堆末尾、把旧版本标记为死行。
+  // 结果就是：重命名一个健身房，它会跳到列表最后，而且不会自己回来。
+  // 按 created_at 排序 = 按添加先后，和未登录时本机数组的顺序一致。
   const [gymsRes, machinesRes, recordsRes, categoriesRes, itemsRes] = await Promise.all([
-    supabase.from('gyms').select('*').eq('user_id', userId),
-    supabase.from('machines').select('*').eq('user_id', userId),
-    supabase.from('records').select('*').eq('user_id', userId),
-    supabase.from('categories').select('*').eq('user_id', userId),
-    supabase.from('category_items').select('*').eq('user_id', userId),
+    supabase.from('gyms').select('*').eq('user_id', userId).order('created_at'),
+    supabase.from('machines').select('*').eq('user_id', userId).order('created_at'),
+    supabase.from('records').select('*').eq('user_id', userId).order('created_at'),
+    supabase.from('categories').select('*').eq('user_id', userId).order('created_at'),
+    supabase.from('category_items').select('*').eq('user_id', userId).order('created_at'),
   ]);
 
   const gyms = (gymsRes.data || []).map(g => ({
