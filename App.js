@@ -11,8 +11,10 @@ import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client
 import { queryClient, asyncStoragePersister } from './src/queryClient';
 import { supabase } from './src/supabase';
 import { hasLocalData, migrateLocalDataToCloud } from './src/storage';
-import { hideAuth, isAuthVisible, subscribeAuthVisible } from './src/authGate';
+import { hideAuth, showAuth, isAuthVisible, subscribeAuthVisible } from './src/authGate';
 import AuthScreen from './src/screens/AuthScreen';
+import WelcomeScreen from './src/screens/WelcomeScreen';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 SplashScreen.preventAutoHideAsync();
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
@@ -166,8 +168,13 @@ function MigratingOverlay() {
   );
 }
 
+// 首次启动的存储方式选择只问一次，选过就记住。
+const WELCOME_SEEN_KEY = '@gymtracker:welcomeSeen';
+
 function App() {
   const [session, setSession] = useState(undefined);
+  // undefined = 还没读出来，和「读出来是 false」要区分，否则会闪一下欢迎页
+  const [welcomeSeen, setWelcomeSeen] = useState(undefined);
   const [authVisible, setAuthVisible] = useState(isAuthVisible);
   const [migrating, setMigrating] = useState(false);
   const lastUserIdRef = useRef(undefined);
@@ -180,6 +187,17 @@ function App() {
   // 不在启动时强制重载，避免每次打开看到“刷新一下”。
 
   useEffect(() => subscribeAuthVisible(setAuthVisible), []);
+
+  useEffect(() => {
+    AsyncStorage.getItem(WELCOME_SEEN_KEY)
+      .then(v => setWelcomeSeen(v === '1'))
+      .catch(() => setWelcomeSeen(true)); // 读不出来就别挡路，直接进主界面
+  }, []);
+
+  const markWelcomeSeen = () => {
+    setWelcomeSeen(true);
+    AsyncStorage.setItem(WELCOME_SEEN_KEY, '1').catch(() => {});
+  };
 
   // 本机没有待搬的数据就什么都不做，避免已登录用户每次启动都闪一下遮罩
   const runMigration = async () => {
@@ -226,8 +244,11 @@ function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // 字体未加载完成或 session 未确定都不渲染，避免闪烁
-  if (session === undefined || !fontsLoaded) return null;
+  // 字体未加载完成、session 未确定、欢迎页标记未读出，都不渲染，避免闪烁
+  if (session === undefined || welcomeSeen === undefined || !fontsLoaded) return null;
+
+  // 首次启动先问一次数据存哪；已登录的用户不问（他们显然已经选过云端）。
+  const showWelcome = !session && !welcomeSeen;
 
   // 没有账号也能用：默认直接进主界面，数据存在本机；
   // 只有用户主动点「登录 / 注册」才显示登录页。
@@ -238,7 +259,16 @@ function App() {
       <PersistQueryClientProvider client={queryClient} persistOptions={{ persister: asyncStoragePersister }}>
         <LocaleProvider>
           <ThemeProvider>
-            {showAuthScreen ? <AuthScreen onSkip={hideAuth} /> : <AppContent />}
+            {showWelcome ? (
+              <WelcomeScreen
+                onChooseCloud={() => { markWelcomeSeen(); showAuth(); }}
+                onChooseLocal={markWelcomeSeen}
+              />
+            ) : showAuthScreen ? (
+              <AuthScreen onSkip={hideAuth} />
+            ) : (
+              <AppContent />
+            )}
             {migrating && <MigratingOverlay />}
           </ThemeProvider>
         </LocaleProvider>

@@ -488,7 +488,6 @@ export default function ProfileScreen() {
             >
               <Text style={s.loginBtnText}>{t('profile.loginBtn')}</Text>
             </TouchableOpacity>
-            <Text style={s.loginHint}>{t('profile.loginHint')}</Text>
           </>
         )}
 
@@ -916,10 +915,6 @@ const makeStyles = (t, isDark) => {
     backgroundColor: t.accent, alignItems: 'center', justifyContent: 'center',
   },
   loginBtnText: { color: t.onAccent, fontSize: 15, fontFamily: FONTS.uiBold },
-  loginHint: {
-    marginHorizontal: 16, marginTop: 8,
-    fontSize: 12, color: t.textFaint, fontFamily: FONTS.ui, textAlign: 'center',
-  },
   logoutBtn: {
     marginHorizontal: 16, marginTop: 12,
     height: ACTION_BTN_HEIGHT, borderRadius: RADIUS.btn,

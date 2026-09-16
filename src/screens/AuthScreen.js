@@ -208,14 +208,7 @@ export default function AuthScreen({ onSkip }) {
           <>
           {/* 大标题随登录/注册模式切换，用强对比取代小字提示 */}
           <Text style={s.title}>{isLogin ? tr('auth.welcomeBack') : tr('auth.createAccount')}</Text>
-          <Text style={s.subtitle}>
-            {isLogin
-              ? tr('auth.subtitleLogin')
-              : tr('auth.subtitleSignup')}
-          </Text>
-          <Text style={s.localNote}>
-            {tr('auth.localHint')}
-          </Text>
+          <Text style={s.subtitle}>{tr('auth.subtitleLogin')}</Text>
 
           {appleAvailable && (
             <View style={s.appleWrap}>
@@ -402,11 +395,8 @@ const makeStyles = (t) => StyleSheet.create({
   },
   subtitle: {
     fontSize: 14, textAlign: 'center', color: t.textMuted,
-    marginTop: 8, fontFamily: FONTS.ui,
-  },
-  localNote: {
-    fontSize: 12.5, textAlign: 'center', color: t.textFaint,
-    marginTop: 6, marginBottom: 32, fontFamily: FONTS.ui,
+    // marginBottom 原本挂在它下面那行本机提示上，那行已删，间距挪到这里
+    marginTop: 8, marginBottom: 32, fontFamily: FONTS.ui,
   },
   appleWrap: { position: 'relative' },
   appleBtn: { height: 50 },
