@@ -10,6 +10,7 @@ import * as Haptics from 'expo-haptics';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchGymData, addCategoryItem, removeCategoryItem } from '../storage';
 import { GYM_DATA_KEY } from '../queryClient';
+import { onMutationError } from '../mutationError';
 import InteractiveLineChart from '../components/InteractiveLineChart';
 import { useTheme, RADIUS, FONTS } from '../ThemeContext';
 import { useTranslation } from 'react-i18next';
@@ -49,10 +50,7 @@ export default function CategoryScreen({ route }) {
       }));
       return { prev };
     },
-    onError: (err, vars, ctx) => {
-      if (ctx?.prev) qc.setQueryData(GYM_DATA_KEY, ctx.prev);
-      Alert.alert(t('common.removeFailed'), t('common.networkError'));
-    },
+    onError: onMutationError(qc, GYM_DATA_KEY, 'removeCategoryItem', 'common.removeFailed'),
     onSettled: () => qc.invalidateQueries({ queryKey: GYM_DATA_KEY }),
   });
 
@@ -71,10 +69,7 @@ export default function CategoryScreen({ route }) {
       }));
       return { prev };
     },
-    onError: (err, vars, ctx) => {
-      if (ctx?.prev) qc.setQueryData(GYM_DATA_KEY, ctx.prev);
-      Alert.alert(t('common.addFailed'), t('common.networkError'));
-    },
+    onError: onMutationError(qc, GYM_DATA_KEY, 'addCategoryItem', 'common.addFailed'),
     onSettled: () => qc.invalidateQueries({ queryKey: GYM_DATA_KEY }),
   });
 

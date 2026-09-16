@@ -10,6 +10,7 @@ import * as Haptics from 'expo-haptics';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchGymData, addRecord as dbAddRecord, updateRecord as dbUpdateRecord, deleteRecord as dbDeleteRecord, calcVolume, getBestRecord, today } from '../storage';
 import { GYM_DATA_KEY } from '../queryClient';
+import { onMutationError } from '../mutationError';
 import SetInput from '../components/SetInput';
 import TrophyModal from '../components/TrophyModal';
 import InteractiveLineChart from '../components/InteractiveLineChart';
@@ -161,13 +162,7 @@ export default function MachineScreen({ route }) {
         records: (old?.records || []).map(r => r.id === newRec.id ? newRec : r),
       }));
     },
-    onError: (err, vars, ctx) => {
-      if (ctx?.prev) qc.setQueryData(GYM_DATA_KEY, ctx.prev);
-      // 用户看友好文案，真实错误留在 console。2026-09-15 那次事故就是因为错误被
-      // 完全吞掉，任何失败都显示成「请检查网络连接」，排查时毫无线索。
-      console.error('[addRecord]', err);
-      Alert.alert(t('common.saveFailed'), t('common.networkError'));
-    },
+    onError: onMutationError(qc, GYM_DATA_KEY, 'addRecord', 'common.saveFailed'),
   });
 
   const updateMutation = useMutation({
@@ -181,11 +176,7 @@ export default function MachineScreen({ route }) {
       }));
       return { prev };
     },
-    onError: (err, vars, ctx) => {
-      if (ctx?.prev) qc.setQueryData(GYM_DATA_KEY, ctx.prev);
-      console.error('[updateRecord]', err);
-      Alert.alert(t('common.saveFailed'), t('common.networkError'));
-    },
+    onError: onMutationError(qc, GYM_DATA_KEY, 'updateRecord', 'common.saveFailed'),
     onSettled: () => qc.invalidateQueries({ queryKey: GYM_DATA_KEY }),
   });
 
@@ -200,10 +191,7 @@ export default function MachineScreen({ route }) {
       }));
       return { prev };
     },
-    onError: (err, vars, ctx) => {
-      if (ctx?.prev) qc.setQueryData(GYM_DATA_KEY, ctx.prev);
-      Alert.alert(t('common.deleteFailed'), t('common.networkError'));
-    },
+    onError: onMutationError(qc, GYM_DATA_KEY, 'deleteRecord', 'common.deleteFailed'),
   });
 
   const save = () => {

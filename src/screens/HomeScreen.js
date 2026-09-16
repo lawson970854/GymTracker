@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity,
   TextInput, Alert, StyleSheet, SafeAreaView, KeyboardAvoidingView, Platform,
@@ -10,6 +10,7 @@ import * as Haptics from 'expo-haptics';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchGymData, addGym as dbAddGym, deleteGym as dbDeleteGym, updateGymName as dbUpdateGymName } from '../storage';
 import { GYM_DATA_KEY } from '../queryClient';
+import { onMutationError } from '../mutationError';
 import { useTheme, RADIUS, FONTS } from '../ThemeContext';
 import RenameModal from '../components/RenameModal';
 import { useTranslation } from 'react-i18next';
@@ -28,6 +29,11 @@ export default function HomeScreen({ navigation }) {
   const [adding, setAdding] = useState(false);
   const [renamingGym, setRenamingGym] = useState(null);
 
+  // 左滑行的引用：点了编辑/删除之后要把这一行收回去，
+  // 否则弹窗关掉后它还敞着，用户会以为界面卡住了。
+  const swipeRefs = useRef({});
+  const closeSwipe = (id) => swipeRefs.current[id]?.close();
+
   const addMutation = useMutation({
     mutationFn: ({ id, name }) => dbAddGym(name, id),
     onMutate: async ({ id, name }) => {
@@ -39,10 +45,7 @@ export default function HomeScreen({ navigation }) {
       }));
       return { prev };
     },
-    onError: (err, vars, ctx) => {
-      if (ctx?.prev) qc.setQueryData(GYM_DATA_KEY, ctx.prev);
-      Alert.alert(t('common.addFailed'), t('common.networkError'));
-    },
+    onError: onMutationError(qc, GYM_DATA_KEY, 'addGym', 'common.addFailed'),
     onSettled: () => qc.invalidateQueries({ queryKey: GYM_DATA_KEY }),
   });
 
@@ -57,10 +60,7 @@ export default function HomeScreen({ navigation }) {
       }));
       return { prev };
     },
-    onError: (err, vars, ctx) => {
-      if (ctx?.prev) qc.setQueryData(GYM_DATA_KEY, ctx.prev);
-      Alert.alert(t('common.deleteFailed'), t('common.networkError'));
-    },
+    onError: onMutationError(qc, GYM_DATA_KEY, 'deleteGym', 'common.deleteFailed'),
     onSettled: () => qc.invalidateQueries({ queryKey: GYM_DATA_KEY }),
   });
 
@@ -75,10 +75,7 @@ export default function HomeScreen({ navigation }) {
       }));
       return { prev };
     },
-    onError: (err, vars, ctx) => {
-      if (ctx?.prev) qc.setQueryData(GYM_DATA_KEY, ctx.prev);
-      Alert.alert(t('common.renameFailed'), t('common.networkError'));
-    },
+    onError: onMutationError(qc, GYM_DATA_KEY, 'renameGym', 'common.renameFailed'),
     onSettled: () => qc.invalidateQueries({ queryKey: GYM_DATA_KEY }),
   });
 
@@ -115,11 +112,12 @@ export default function HomeScreen({ navigation }) {
             contentContainerStyle={gyms.length === 0 && s.emptyContainer}
             renderItem={({ item }) => (
               <Swipeable
+                ref={r => { swipeRefs.current[item.id] = r; }}
                 renderRightActions={() => (
                   <View style={s.swipeActions}>
                     <TouchableOpacity
                       style={[s.swipeAct, s.swipeEdit]}
-                      onPress={() => setRenamingGym(item)}
+                      onPress={() => { closeSwipe(item.id); setRenamingGym(item); }}
                       accessibilityLabel={t('home.renameA11y', { name: item.name })}
                       accessibilityRole="button"
                     >
@@ -128,7 +126,7 @@ export default function HomeScreen({ navigation }) {
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={[s.swipeAct, s.swipeDel]}
-                      onPress={() => deleteGym(item)}
+                      onPress={() => { closeSwipe(item.id); deleteGym(item); }}
                       accessibilityLabel={t('home.deleteA11y', { name: item.name })}
                       accessibilityRole="button"
                     >

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, Modal,
   TextInput, Alert, StyleSheet, SafeAreaView, KeyboardAvoidingView, Platform,
@@ -10,6 +10,7 @@ import * as Haptics from 'expo-haptics';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchGymData, addMachine as dbAddMachine, deleteMachine as dbDeleteMachine, addCategory as dbAddCategory, updateMachineName as dbUpdateMachineName, getBestRecord } from '../storage';
 import { GYM_DATA_KEY } from '../queryClient';
+import { onMutationError } from '../mutationError';
 import { useTheme, RADIUS, FONTS } from '../ThemeContext';
 import RenameModal from '../components/RenameModal';
 import { useTranslation } from 'react-i18next';
@@ -37,6 +38,11 @@ export default function GymScreen({ navigation, route }) {
   const [newCatName, setNewCatName] = useState('');
   const [renamingMachine, setRenamingMachine] = useState(null);
 
+  // 左滑行的引用：点了编辑/删除之后要把这一行收回去，
+  // 否则弹窗关掉后它还敞着，用户会以为界面卡住了。
+  const swipeRefs = useRef({});
+  const closeSwipe = (id) => swipeRefs.current[id]?.close();
+
   const selectedCategory = categories.find(c => c.id === selectedCategoryId);
 
   const addMutation = useMutation({
@@ -54,10 +60,7 @@ export default function GymScreen({ navigation, route }) {
       }));
       return { prev };
     },
-    onError: (err, vars, ctx) => {
-      if (ctx?.prev) qc.setQueryData(GYM_DATA_KEY, ctx.prev);
-      Alert.alert(t('common.addFailed'), t('common.networkError'));
-    },
+    onError: onMutationError(qc, GYM_DATA_KEY, 'addMachine', 'common.addFailed'),
     onSettled: () => qc.invalidateQueries({ queryKey: GYM_DATA_KEY }),
   });
 
@@ -76,10 +79,7 @@ export default function GymScreen({ navigation, route }) {
       }));
       return { prev };
     },
-    onError: (err, vars, ctx) => {
-      if (ctx?.prev) qc.setQueryData(GYM_DATA_KEY, ctx.prev);
-      Alert.alert(t('common.renameFailed'), t('common.networkError'));
-    },
+    onError: onMutationError(qc, GYM_DATA_KEY, 'renameMachine', 'common.renameFailed'),
     onSettled: () => qc.invalidateQueries({ queryKey: GYM_DATA_KEY }),
   });
 
@@ -91,7 +91,7 @@ export default function GymScreen({ navigation, route }) {
       setNewCatName('');
       setPickerVisible(false);
     },
-    onError: () => Alert.alert(t('gym.addCategoryFailed'), t('common.networkError')),
+    onError: onMutationError(qc, GYM_DATA_KEY, 'addCategoryFromGym', 'gym.addCategoryFailed'),
   });
 
   const deleteMutation = useMutation({
@@ -110,10 +110,7 @@ export default function GymScreen({ navigation, route }) {
       }));
       return { prev };
     },
-    onError: (err, vars, ctx) => {
-      if (ctx?.prev) qc.setQueryData(GYM_DATA_KEY, ctx.prev);
-      Alert.alert(t('common.deleteFailed'), t('common.networkError'));
-    },
+    onError: onMutationError(qc, GYM_DATA_KEY, 'deleteMachine', 'common.deleteFailed'),
     onSettled: () => qc.invalidateQueries({ queryKey: GYM_DATA_KEY }),
   });
 
@@ -170,11 +167,12 @@ export default function GymScreen({ navigation, route }) {
             contentContainerStyle={machines.length === 0 && s.emptyContainer}
             renderItem={({ item }) => (
               <Swipeable
+                ref={r => { swipeRefs.current[item.id] = r; }}
                 renderRightActions={() => (
                   <View style={s.swipeActions}>
                     <TouchableOpacity
                       style={[s.swipeAct, s.swipeEdit]}
-                      onPress={() => setRenamingMachine(item)}
+                      onPress={() => { closeSwipe(item.id); setRenamingMachine(item); }}
                       accessibilityLabel={t('gym.renameA11y', { name: item.name })}
                       accessibilityRole="button"
                     >
@@ -183,7 +181,7 @@ export default function GymScreen({ navigation, route }) {
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={[s.swipeAct, s.swipeDel]}
-                      onPress={() => deleteMachine(item)}
+                      onPress={() => { closeSwipe(item.id); deleteMachine(item); }}
                       accessibilityLabel={t('gym.deleteA11y', { name: item.name })}
                       accessibilityRole="button"
                     >
