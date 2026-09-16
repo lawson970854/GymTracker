@@ -41,3 +41,7 @@ example
 # generated native folders
 /ios
 /android
+
+# 设计素材与截图（体积大，不进仓库）
+/LOGO
+/screenshots

@@ -12,8 +12,11 @@ import { fetchGymData, addMachine as dbAddMachine, deleteMachine as dbDeleteMach
 import { GYM_DATA_KEY } from '../queryClient';
 import { useTheme, RADIUS, FONTS } from '../ThemeContext';
 import RenameModal from '../components/RenameModal';
+import { useTranslation } from 'react-i18next';
+import { formatVolume } from '../constants/units';
 
 export default function GymScreen({ navigation, route }) {
+  const { t } = useTranslation();
   const { gymId, gymName } = route.params;
   const headerHeight = useHeaderHeight();
   const { theme } = useTheme();
@@ -52,7 +55,7 @@ export default function GymScreen({ navigation, route }) {
     },
     onError: (err, vars, ctx) => {
       if (ctx?.prev) qc.setQueryData(GYM_DATA_KEY, ctx.prev);
-      Alert.alert('添加失败', '请检查网络连接');
+      Alert.alert(t('common.addFailed'), t('common.networkError'));
     },
     onSettled: () => qc.invalidateQueries({ queryKey: GYM_DATA_KEY }),
   });
@@ -74,7 +77,7 @@ export default function GymScreen({ navigation, route }) {
     },
     onError: (err, vars, ctx) => {
       if (ctx?.prev) qc.setQueryData(GYM_DATA_KEY, ctx.prev);
-      Alert.alert('重命名失败', '请检查网络连接');
+      Alert.alert(t('common.renameFailed'), t('common.networkError'));
     },
     onSettled: () => qc.invalidateQueries({ queryKey: GYM_DATA_KEY }),
   });
@@ -87,7 +90,7 @@ export default function GymScreen({ navigation, route }) {
       setNewCatName('');
       setPickerVisible(false);
     },
-    onError: () => Alert.alert('新建分类失败', '请检查网络连接'),
+    onError: () => Alert.alert(t('gym.addCategoryFailed'), t('common.networkError')),
   });
 
   const deleteMutation = useMutation({
@@ -108,7 +111,7 @@ export default function GymScreen({ navigation, route }) {
     },
     onError: (err, vars, ctx) => {
       if (ctx?.prev) qc.setQueryData(GYM_DATA_KEY, ctx.prev);
-      Alert.alert('删除失败', '请检查网络连接');
+      Alert.alert(t('common.deleteFailed'), t('common.networkError'));
     },
     onSettled: () => qc.invalidateQueries({ queryKey: GYM_DATA_KEY }),
   });
@@ -138,10 +141,10 @@ export default function GymScreen({ navigation, route }) {
   };
 
   const deleteMachine = (machine) => {
-    Alert.alert('删除器械', `确认删除「${machine.name}」及其所有记录？`, [
-      { text: '取消', style: 'cancel' },
+    Alert.alert(t('gym.deleteTitle'), t('gym.deleteMessage', { name: machine.name }), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: '删除', style: 'destructive',
+        text: t('common.delete'), style: 'destructive',
         onPress: () => {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
           deleteMutation.mutate(machine.id);
@@ -152,8 +155,8 @@ export default function GymScreen({ navigation, route }) {
 
   const bestFor = (machineId) => {
     const best = getBestRecord(records, gymId, machineId);
-    if (!best) return '暂无记录';
-    return `最佳 ${best.volume} 千克·次`;
+    if (!best) return t('gym.noRecord');
+    return t('common.bestValue', { value: formatVolume(best.volume) });
   };
 
   return (
@@ -171,20 +174,20 @@ export default function GymScreen({ navigation, route }) {
                     <TouchableOpacity
                       style={[s.swipeAct, s.swipeEdit]}
                       onPress={() => setRenamingMachine(item)}
-                      accessibilityLabel={`重命名${item.name}`}
+                      accessibilityLabel={t('gym.renameA11y', { name: item.name })}
                       accessibilityRole="button"
                     >
                       <Ionicons name="pencil" size={18} color="#fff" />
-                      <Text style={s.swipeActText}>编辑</Text>
+                      <Text style={s.swipeActText}>{t('common.edit')}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={[s.swipeAct, s.swipeDel]}
                       onPress={() => deleteMachine(item)}
-                      accessibilityLabel={`删除${item.name}`}
+                      accessibilityLabel={t('gym.deleteA11y', { name: item.name })}
                       accessibilityRole="button"
                     >
                       <Ionicons name="trash-outline" size={18} color="#fff" />
-                      <Text style={s.swipeActText}>删除</Text>
+                      <Text style={s.swipeActText}>{t('common.delete')}</Text>
                     </TouchableOpacity>
                   </View>
                 )}
@@ -196,7 +199,7 @@ export default function GymScreen({ navigation, route }) {
                   })}
                   accessibilityRole="button"
                   accessibilityLabel={item.name}
-                  accessibilityHint="进入器械训练记录"
+                  accessibilityHint={t('gym.openMachineHint')}
                 >
                   <View style={s.rowIcon}>
                     <Ionicons name="barbell-outline" size={22} color={theme.accent} />
@@ -210,14 +213,14 @@ export default function GymScreen({ navigation, route }) {
               </Swipeable>
             )}
             ListEmptyComponent={
-              <Text style={s.empty}>还没有器械{'\n'}点下方按钮添加</Text>
+              <Text style={s.empty}>{t('gym.empty')}</Text>
             }
           />
           {adding ? (
             <View style={s.addCard}>
               <TextInput
                 style={s.addInput}
-                placeholder="器械名称，如：高位下拉"
+                placeholder={t('gym.namePlaceholder')}
                 placeholderTextColor={theme.textFaint}
                 value={newName}
                 onChangeText={setNewName}
@@ -225,17 +228,17 @@ export default function GymScreen({ navigation, route }) {
                 autoCorrect={false}
                 returnKeyType="done"
                 onSubmitEditing={addMachine}
-                accessibilityLabel="器械名称"
+                accessibilityLabel={t('gym.nameA11y')}
               />
               <TouchableOpacity
                 style={s.categoryChip}
                 onPress={() => setPickerVisible(true)}
                 accessibilityRole="button"
-                accessibilityLabel="选择分类"
+                accessibilityLabel={t('gym.pickCategory')}
               >
                 <Ionicons name="pricetag-outline" size={14} color={selectedCategory ? theme.accent : theme.textMuted} />
                 <Text style={[s.categoryChipText, selectedCategory && { color: theme.accent }]}>
-                  {selectedCategory ? selectedCategory.name : '归类到（可选）'}
+                  {selectedCategory ? selectedCategory.name : t('gym.categoryOptional')}
                 </Text>
                 {selectedCategory && (
                   <TouchableOpacity onPress={() => setSelectedCategoryId(null)} hitSlop={8}>
@@ -244,11 +247,11 @@ export default function GymScreen({ navigation, route }) {
                 )}
               </TouchableOpacity>
               <View style={s.btnRow}>
-                <TouchableOpacity style={s.cancelBtn} onPress={cancelAdd} accessibilityRole="button" accessibilityLabel="取消">
-                  <Text style={s.cancelText}>取消</Text>
+                <TouchableOpacity style={s.cancelBtn} onPress={cancelAdd} accessibilityRole="button" accessibilityLabel={t('common.cancel')}>
+                  <Text style={s.cancelText}>{t('common.cancel')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={s.confirmBtn} onPress={addMachine} accessibilityRole="button">
-                  <Text style={s.confirmText}>确认</Text>
+                  <Text style={s.confirmText}>{t('common.confirm')}</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -257,11 +260,11 @@ export default function GymScreen({ navigation, route }) {
               style={s.addBtn}
               onPress={() => setAdding(true)}
               accessibilityRole="button"
-              accessibilityLabel="添加器械"
+              accessibilityLabel={t('gym.addMachine')}
             >
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
               <Ionicons name="add" size={20} color="#fff" accessible={false} />
-              <Text style={s.addBtnText}>添加器械</Text>
+              <Text style={s.addBtnText}>{t('gym.addMachine')}</Text>
             </View>
             </TouchableOpacity>
           )}
@@ -273,13 +276,13 @@ export default function GymScreen({ navigation, route }) {
         <KeyboardAvoidingView style={s.modalBackdrop} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={() => setPickerVisible(false)} />
           <TouchableOpacity activeOpacity={1} style={s.modalCard} onPress={() => {}}>
-            <Text style={s.modalTitle}>选择分类</Text>
+            <Text style={s.modalTitle}>{t('gym.pickCategory')}</Text>
             <FlatList
               data={categories}
               keyExtractor={c => c.id}
               style={{ maxHeight: 280 }}
               ListEmptyComponent={
-                <Text style={s.modalEmpty}>还没有分类，下方新建一个</Text>
+                <Text style={s.modalEmpty}>{t('gym.noCategoryYet')}</Text>
               }
               renderItem={({ item }) => (
                 <TouchableOpacity
@@ -299,7 +302,7 @@ export default function GymScreen({ navigation, route }) {
             <View style={s.modalNewRow}>
               <TextInput
                 style={s.modalInput}
-                placeholder="+ 新建分类，如：杠铃卧推"
+                placeholder={t('gym.newCategoryPlaceholder')}
                 placeholderTextColor={theme.textFaint}
                 value={newCatName}
                 onChangeText={setNewCatName}
@@ -307,7 +310,7 @@ export default function GymScreen({ navigation, route }) {
                 onSubmitEditing={submitNewCategory}
               />
               <TouchableOpacity style={s.modalNewBtn} onPress={submitNewCategory}>
-                <Text style={s.modalNewBtnText}>新建</Text>
+                <Text style={s.modalNewBtnText}>{t('common.new')}</Text>
               </TouchableOpacity>
             </View>
           </TouchableOpacity>
@@ -316,7 +319,7 @@ export default function GymScreen({ navigation, route }) {
 
       <RenameModal
         visible={!!renamingMachine}
-        title="重命名器械"
+        title={t('gym.renameTitle')}
         initialValue={renamingMachine?.name || ''}
         onCancel={() => setRenamingMachine(null)}
         onConfirm={(name) => {

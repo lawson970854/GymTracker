@@ -4,6 +4,7 @@
 // 版本保持一致，storage.js 根据有没有登录会话决定走哪一套。
 import * as FileSystem from 'expo-file-system/legacy';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import i18n from './i18n';
 
 const DATA_KEY = '@gymtracker:localData';
 const PROFILE_KEY = '@gymtracker:localProfile';
@@ -85,7 +86,7 @@ export function updateGymName(gymId, name) {
 export function addMachine(gymId, name, categoryId) {
   return mutate(data => {
     const gym = data.gyms.find(g => g.id === gymId);
-    if (!gym) throw new Error('健身房不存在');
+    if (!gym) throw new Error(i18n.t('errors.gymNotFound'));
     const machine = { id: newId(), name };
     gym.machines = [...(gym.machines || []), machine];
     if (categoryId) {

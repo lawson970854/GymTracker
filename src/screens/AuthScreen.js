@@ -9,11 +9,13 @@ import * as AppleAuthentication from 'expo-apple-authentication';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../supabase';
 import { useTheme, RADIUS, FONTS } from '../ThemeContext';
+import { useTranslation } from 'react-i18next';
 
 const LAST_METHOD_KEY = '@gymtracker:lastAuthMethod';
 const DANGER = '#E5484D';
 
 export default function AuthScreen({ onSkip }) {
+  const { t: tr } = useTranslation();
   const { theme: t, isDark } = useTheme();
   const s = useMemo(() => makeStyles(t), [t]);
 
@@ -54,17 +56,17 @@ export default function AuthScreen({ onSkip }) {
           AppleAuthentication.AppleAuthenticationScope.EMAIL,
         ],
       });
-      if (!credential.identityToken) throw new Error('未获取到 Apple 身份令牌');
+      if (!credential.identityToken) throw new Error(tr('auth.appleTokenMissing'));
 
       const { error } = await supabase.auth.signInWithIdToken({
         provider: 'apple',
         token: credential.identityToken,
       });
-      if (error) Alert.alert('登录失败', error.message);
+      if (error) Alert.alert(tr('auth.signInFailed'), error.message);
       else rememberMethod('apple');
     } catch (e) {
       if (e.code !== 'ERR_REQUEST_CANCELED') {
-        Alert.alert('登录失败', e.message || '请重试');
+        Alert.alert(tr('auth.signInFailed'), e.message || tr('auth.retry'));
       }
     }
   };
@@ -72,22 +74,22 @@ export default function AuthScreen({ onSkip }) {
   const handleAuth = async () => {
     const e = email.trim();
     const p = password.trim();
-    if (!e || !p) return Alert.alert('提示', '请输入邮箱和密码');
-    if (p.length < 6) return Alert.alert('提示', '密码至少 6 位');
+    if (!e || !p) return Alert.alert(tr('auth.notice'), tr('auth.needEmailPassword'));
+    if (p.length < 6) return Alert.alert(tr('auth.notice'), tr('auth.passwordTooShort'));
     if (!isLogin && p !== password2.trim()) {
-      return Alert.alert('提示', '两次输入的密码不一致');
+      return Alert.alert(tr('auth.notice'), tr('auth.passwordMismatch'));
     }
 
     setLoading(true);
     try {
       if (isLogin) {
         const { error } = await supabase.auth.signInWithPassword({ email: e, password: p });
-        if (error) Alert.alert('登录失败', error.message);
+        if (error) Alert.alert(tr('auth.signInFailed'), error.message);
         else rememberMethod('email');
       } else {
         const { data, error } = await supabase.auth.signUp({ email: e, password: p });
         if (error) {
-          Alert.alert('注册失败', error.message);
+          Alert.alert(tr('auth.signUpFailed'), error.message);
         } else {
           rememberMethod('email');
           // 关闭邮箱验证时 signUp 直接返回会话，App.js 会自动进入主界面；
@@ -102,7 +104,7 @@ export default function AuthScreen({ onSkip }) {
 
   const handleResend = async () => {
     const { error } = await supabase.auth.resend({ type: 'signup', email: pendingEmail });
-    if (error) Alert.alert('发送失败', error.message);
+    if (error) Alert.alert(tr('auth.sendFailed'), error.message);
     else {
       setResent(true);
       setTimeout(() => setResent(false), 4000);
@@ -118,18 +120,18 @@ export default function AuthScreen({ onSkip }) {
 
   const handleForgotPassword = () => {
     const e = email.trim();
-    if (!e) return Alert.alert('提示', '请先在上方输入邮箱，再点击"忘记密码"');
+    if (!e) return Alert.alert(tr('auth.notice'), tr('auth.needEmailFirst'));
     Alert.alert(
-      '重置密码',
-      `将发送重置密码邮件到 ${e}，确认发送吗？`,
+      tr('auth.resetTitle'),
+      tr('auth.resetMessage', { email: e }),
       [
-        { text: '取消', style: 'cancel' },
+        { text: tr('common.cancel'), style: 'cancel' },
         {
-          text: '发送',
+          text: tr('auth.send'),
           onPress: async () => {
             const { error } = await supabase.auth.resetPasswordForEmail(e);
-            if (error) Alert.alert('发送失败', error.message);
-            else Alert.alert('已发送', '请查收邮件，按提示重置密码后再回来登录');
+            if (error) Alert.alert(tr('auth.sendFailed'), error.message);
+            else Alert.alert(tr('auth.sentTitle'), tr('auth.sentMessage'));
           },
         },
       ],
@@ -157,37 +159,37 @@ export default function AuthScreen({ onSkip }) {
 
           {pendingEmail ? (
             <>
-              <Text style={s.title}>去邮箱完成验证</Text>
+              <Text style={s.title}>{tr('auth.verifyTitle')}</Text>
               <Text style={s.subtitle}>
-                验证邮件已发送到{'\n'}
+                {tr('auth.verifySentTo')}{'\n'}
                 <Text style={s.pendingEmail}>{pendingEmail}</Text>
               </Text>
 
               <View style={s.steps}>
-                <Text style={s.stepLine}>1. 打开邮箱，找到「铁记」的验证邮件</Text>
-                <Text style={s.stepLine}>2. 点击邮件里的确认链接</Text>
-                <Text style={s.stepLine}>3. 回到这里，用刚才的邮箱和密码登录</Text>
+                <Text style={s.stepLine}>{tr('auth.step1')}</Text>
+                <Text style={s.stepLine}>{tr('auth.step2')}</Text>
+                <Text style={s.stepLine}>{tr('auth.step3')}</Text>
               </View>
 
-              <Text style={s.hint}>没收到？先看看垃圾邮件文件夹。</Text>
+              <Text style={s.hint}>{tr('auth.spamHint')}</Text>
 
               <TouchableOpacity
                 style={s.btn}
                 onPress={handleResend}
                 accessibilityRole="button"
-                accessibilityLabel="重新发送验证邮件"
+                accessibilityLabel={tr('auth.resend')}
               >
-                <Text style={s.btnText}>{resent ? '已重新发送' : '重新发送验证邮件'}</Text>
+                <Text style={s.btnText}>{resent ? tr('auth.resent') : tr('auth.resend')}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 onPress={backToLogin}
                 accessibilityRole="button"
-                accessibilityLabel="返回登录"
+                accessibilityLabel={tr('auth.backToLoginA11y')}
                 style={s.switchRow}
               >
                 <Text style={s.switchText}>
-                  已经验证好了？<Text style={s.switchLink}> 去登录</Text>
+                  {tr('auth.verifiedPrompt')}<Text style={s.switchLink}>{tr('auth.goLoginInline')}</Text>
                 </Text>
               </TouchableOpacity>
 
@@ -195,31 +197,31 @@ export default function AuthScreen({ onSkip }) {
                 <TouchableOpacity
                   onPress={onSkip}
                   accessibilityRole="button"
-                  accessibilityLabel="稍后再说，先不登录使用"
+                  accessibilityLabel={tr('auth.skip')}
                   style={s.skipRow}
                 >
-                  <Text style={s.skipText}>稍后再说，先不登录使用</Text>
+                  <Text style={s.skipText}>{tr('auth.skip')}</Text>
                 </TouchableOpacity>
               )}
             </>
           ) : (
           <>
           {/* 大标题随登录/注册模式切换，用强对比取代小字提示 */}
-          <Text style={s.title}>{isLogin ? '欢迎回来' : '创建你的账号'}</Text>
+          <Text style={s.title}>{isLogin ? tr('auth.welcomeBack') : tr('auth.createAccount')}</Text>
           <Text style={s.subtitle}>
             {isLogin
-              ? '登录后，训练记录会同步到云端，换设备也能接着用'
-              : '注册后，训练记录会同步到云端，换设备也能接着用'}
+              ? tr('auth.subtitleLogin')
+              : tr('auth.subtitleSignup')}
           </Text>
           <Text style={s.localNote}>
-            不登录也能记录，数据保存在这台设备上
+            {tr('auth.localHint')}
           </Text>
 
           {appleAvailable && (
             <View style={s.appleWrap}>
               {lastMethod === 'apple' && (
                 <View style={s.lastUsedBadge}>
-                  <Text style={s.lastUsedText}>上次使用</Text>
+                  <Text style={s.lastUsedText}>{tr('auth.lastUsed')}</Text>
                 </View>
               )}
               <AppleAuthentication.AppleAuthenticationButton
@@ -239,7 +241,7 @@ export default function AuthScreen({ onSkip }) {
           {appleAvailable && (
             <View style={s.dividerRow}>
               <View style={s.dividerLine} />
-              <Text style={s.dividerText}>或</Text>
+              <Text style={s.dividerText}>{tr('auth.or')}</Text>
               <View style={s.dividerLine} />
             </View>
           )}
@@ -247,10 +249,10 @@ export default function AuthScreen({ onSkip }) {
           <View style={s.fieldWrap}>
             {lastMethod === 'email' && (
               <View style={s.lastUsedBadgeInline}>
-                <Text style={s.lastUsedText}>上次使用</Text>
+                <Text style={s.lastUsedText}>{tr('auth.lastUsed')}</Text>
               </View>
             )}
-            <Text style={s.label}>邮箱</Text>
+            <Text style={s.label}>{tr('auth.email')}</Text>
             <TextInput
               style={s.input}
               placeholder="you@example.com"
@@ -263,20 +265,20 @@ export default function AuthScreen({ onSkip }) {
               textContentType="emailAddress"
               returnKeyType="next"
               onSubmitEditing={() => passwordRef.current?.focus()}
-              accessibilityLabel="邮箱地址"
+              accessibilityLabel={tr('auth.emailA11y')}
             />
           </View>
 
           <View style={s.fieldWrap}>
             <View style={s.labelRow}>
-              <Text style={s.label}>密码</Text>
+              <Text style={s.label}>{tr('auth.password')}</Text>
               {isLogin && (
                 <TouchableOpacity
                   onPress={handleForgotPassword}
                   accessibilityRole="button"
-                  accessibilityLabel="忘记密码"
+                  accessibilityLabel={tr('auth.forgotPasswordA11y')}
                 >
-                  <Text style={s.forgotText}>忘记密码？</Text>
+                  <Text style={s.forgotText}>{tr('auth.forgotPassword')}</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -284,7 +286,7 @@ export default function AuthScreen({ onSkip }) {
               <TextInput
                 ref={passwordRef}
                 style={s.passwordInput}
-                placeholder="至少 6 位"
+                placeholder={tr('auth.passwordPlaceholder')}
                 placeholderTextColor={t.textFaint}
                 value={password}
                 onChangeText={setPassword}
@@ -292,12 +294,12 @@ export default function AuthScreen({ onSkip }) {
                 textContentType={isLogin ? 'password' : 'newPassword'}
                 returnKeyType={isLogin ? 'done' : 'next'}
                 onSubmitEditing={() => isLogin ? handleAuth() : password2Ref.current?.focus()}
-                accessibilityLabel="密码"
+                accessibilityLabel={tr('auth.password')}
               />
               <TouchableOpacity
                 style={s.eyeBtn}
                 onPress={() => setShowPassword(v => !v)}
-                accessibilityLabel={showPassword ? '隐藏密码' : '显示密码'}
+                accessibilityLabel={showPassword ? tr('auth.hidePassword') : tr('auth.showPassword')}
                 accessibilityRole="button"
               >
                 <Ionicons
@@ -311,12 +313,12 @@ export default function AuthScreen({ onSkip }) {
 
           {!isLogin && (
             <View style={s.fieldWrap}>
-              <Text style={s.label}>确认密码</Text>
+              <Text style={s.label}>{tr('auth.confirmPassword')}</Text>
               <View style={[s.passwordRow, mismatch && s.inputError]}>
                 <TextInput
                   ref={password2Ref}
                   style={s.passwordInput}
-                  placeholder="再输入一次"
+                  placeholder={tr('auth.confirmPasswordPlaceholder')}
                   placeholderTextColor={t.textFaint}
                   value={password2}
                   onChangeText={setPassword2}
@@ -324,7 +326,7 @@ export default function AuthScreen({ onSkip }) {
                   textContentType="newPassword"
                   returnKeyType="done"
                   onSubmitEditing={handleAuth}
-                  accessibilityLabel="确认密码"
+                  accessibilityLabel={tr('auth.confirmPassword')}
                 />
                 {password2.length > 0 && (
                   <View style={s.eyeBtn}>
@@ -336,7 +338,7 @@ export default function AuthScreen({ onSkip }) {
                   </View>
                 )}
               </View>
-              {mismatch && <Text style={s.errorText}>两次输入的密码不一致</Text>}
+              {mismatch && <Text style={s.errorText}>{tr('auth.passwordMismatch')}</Text>}
             </View>
           )}
 
@@ -345,11 +347,11 @@ export default function AuthScreen({ onSkip }) {
             onPress={handleAuth}
             disabled={loading}
             accessibilityRole="button"
-            accessibilityLabel={isLogin ? '登录' : '注册'}
+            accessibilityLabel={isLogin ? tr('auth.login') : tr('auth.signup')}
           >
             {loading
               ? <ActivityIndicator color={t.onAccent} />
-              : <Text style={s.btnText}>{isLogin ? '登录' : '注册'}</Text>
+              : <Text style={s.btnText}>{isLogin ? tr('auth.login') : tr('auth.signup')}</Text>
             }
           </TouchableOpacity>
 
@@ -357,12 +359,12 @@ export default function AuthScreen({ onSkip }) {
           <TouchableOpacity
             onPress={() => { setIsLogin(!isLogin); setPassword2(''); }}
             accessibilityRole="button"
-            accessibilityLabel={isLogin ? '没有账号，去注册' : '已有账号，去登录'}
+            accessibilityLabel={isLogin ? tr('auth.noAccountA11y') : tr('auth.hasAccountA11y')}
             style={s.switchRow}
           >
             <Text style={s.switchText}>
-              {isLogin ? '没有账号？' : '已有账号？'}
-              <Text style={s.switchLink}>{isLogin ? ' 去注册' : ' 去登录'}</Text>
+              {isLogin ? tr('auth.noAccount') : tr('auth.hasAccount')}
+              <Text style={s.switchLink}>{isLogin ? tr('auth.goSignupInline') : tr('auth.goLoginInline')}</Text>
             </Text>
           </TouchableOpacity>
 
@@ -370,10 +372,10 @@ export default function AuthScreen({ onSkip }) {
             <TouchableOpacity
               onPress={onSkip}
               accessibilityRole="button"
-              accessibilityLabel="稍后再说，先不登录使用"
+              accessibilityLabel={tr('auth.skip')}
               style={s.skipRow}
             >
-              <Text style={s.skipText}>稍后再说，先不登录使用</Text>
+              <Text style={s.skipText}>{tr('auth.skip')}</Text>
             </TouchableOpacity>
           )}
           </>

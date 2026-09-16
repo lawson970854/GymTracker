@@ -47,7 +47,12 @@ const NEUTRAL_DARK = {
 // ---- Accent schemes (accent / accentBg / accentInk / glow) ----
 // accentInk = a slightly darker accent for small text on neutral backgrounds.
 export const SCHEMES = ['emerald', 'blue', 'indigo', 'coral', 'pink', 'graphite'];
-export const SCHEME_LABELS = { emerald: '翠绿', blue: '海蓝', indigo: '靛蓝', coral: '珊瑚', pink: '玫粉', graphite: '石墨' };
+// 配色名只存 i18n key，取文案由使用方负责 —— ThemeContext 本身不依赖 i18n，
+// 避免 Provider 之间产生初始化顺序上的耦合。
+export const SCHEME_LABEL_KEYS = {
+  emerald: 'theme.emerald', blue: 'theme.blue', indigo: 'theme.indigo',
+  coral: 'theme.coral', pink: 'theme.pink', graphite: 'theme.graphite',
+};
 
 const ACCENTS = {
   light: {

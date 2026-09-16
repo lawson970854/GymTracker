@@ -12,10 +12,13 @@ import { fetchGymData, addCategoryItem, removeCategoryItem } from '../storage';
 import { GYM_DATA_KEY } from '../queryClient';
 import InteractiveLineChart from '../components/InteractiveLineChart';
 import { useTheme, RADIUS, FONTS } from '../ThemeContext';
+import { useTranslation } from 'react-i18next';
+import { UNIT_VOLUME, formatSetLine, formatVolume } from '../constants/units';
 
 const W = Dimensions.get('window').width;
 
 export default function CategoryScreen({ route }) {
+  const { t } = useTranslation();
   const { categoryId } = route.params;
   const { theme } = useTheme();
   const s = useMemo(() => makeStyles(theme), [theme]);
@@ -48,7 +51,7 @@ export default function CategoryScreen({ route }) {
     },
     onError: (err, vars, ctx) => {
       if (ctx?.prev) qc.setQueryData(GYM_DATA_KEY, ctx.prev);
-      Alert.alert('移除失败', '请检查网络连接');
+      Alert.alert(t('common.removeFailed'), t('common.networkError'));
     },
     onSettled: () => qc.invalidateQueries({ queryKey: GYM_DATA_KEY }),
   });
@@ -70,7 +73,7 @@ export default function CategoryScreen({ route }) {
     },
     onError: (err, vars, ctx) => {
       if (ctx?.prev) qc.setQueryData(GYM_DATA_KEY, ctx.prev);
-      Alert.alert('添加失败', '请检查网络连接');
+      Alert.alert(t('common.addFailed'), t('common.networkError'));
     },
     onSettled: () => qc.invalidateQueries({ queryKey: GYM_DATA_KEY }),
   });
@@ -110,10 +113,10 @@ export default function CategoryScreen({ route }) {
     : null;
 
   const removeItem = (item) => {
-    Alert.alert('移除器械', `从分类中移除「${item.machineName}」？（记录不会删除）`, [
-      { text: '取消', style: 'cancel' },
+    Alert.alert(t('category.removeTitle'), t('category.removeMessage', { name: item.machineName }), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: '移除', style: 'destructive',
+        text: t('common.remove'), style: 'destructive',
         onPress: () => {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
           removeMutation.mutate({ gymId: item.gymId, machineId: item.machineId });
@@ -140,11 +143,11 @@ export default function CategoryScreen({ route }) {
               <View style={s.bestBadge}>
                 <Ionicons name="trophy" size={16} color="#fff" />
               </View>
-              <Text style={s.bestLabel}>同类历史最佳</Text>
+              <Text style={s.bestLabel}>{t('category.bestLabel')}</Text>
             </View>
-            <Text style={s.bestVolume}>{overallBest.volume.toLocaleString()}<Text style={s.unitSuffix}> 千克·次</Text></Text>
+            <Text style={s.bestVolume}>{overallBest.volume.toLocaleString()}<Text style={s.unitSuffix}> {UNIT_VOLUME}</Text></Text>
             <Text style={s.bestDetail}>
-              {overallBest.weight} 千克 × {overallBest.sets?.length || 0}组（{overallBest.sets?.join('/') || '-'} 次）· {overallBest.date}
+              {formatSetLine(overallBest.weight, overallBest.sets)} · {overallBest.date}
             </Text>
             {bestItem && (
               <Text style={s.bestSource}>
@@ -158,22 +161,22 @@ export default function CategoryScreen({ route }) {
           <View style={s.statsRow}>
             <View style={s.statCard}>
               <Text style={s.statNum} maxFontSizeMultiplier={1.2}>{allRecords.length}</Text>
-              <Text style={s.statLabel} maxFontSizeMultiplier={1.2}>训练记录</Text>
+              <Text style={s.statLabel} maxFontSizeMultiplier={1.2}>{t('common.statRecords')}</Text>
             </View>
             <View style={s.statCard}>
               <Text style={s.statNum} maxFontSizeMultiplier={1.2}>{chartEntries.length}</Text>
-              <Text style={s.statLabel} maxFontSizeMultiplier={1.2}>训练天数</Text>
+              <Text style={s.statLabel} maxFontSizeMultiplier={1.2}>{t('common.statDays')}</Text>
             </View>
             <View style={s.statCard}>
               <Text style={s.statNum} maxFontSizeMultiplier={1.2}>{totalVolume.toLocaleString()}</Text>
-              <Text style={s.statLabel} maxFontSizeMultiplier={1.2}>总训练量</Text>
+              <Text style={s.statLabel} maxFontSizeMultiplier={1.2}>{t('common.statVolume')}</Text>
             </View>
           </View>
         )}
 
         {hasChart && (
           <View style={s.chartCard}>
-            <Text style={s.sectionTitle}>同类趋势</Text>
+            <Text style={s.sectionTitle}>{t('category.trendTitle')}</Text>
             <InteractiveLineChart
               labels={chartEntries.map(([d]) => d.slice(5))}
               data={chartEntries.map(([, v]) => v)}
@@ -187,30 +190,30 @@ export default function CategoryScreen({ route }) {
 
         <View style={s.machinesCard}>
           <View style={s.machinesHeader}>
-            <Text style={s.sectionTitle}>关联器械</Text>
-            <TouchableOpacity style={s.addMachineBtn} onPress={() => { setPickerStep('gym'); setPickerGym(null); setAddModalVisible(true); }} accessibilityRole="button" accessibilityLabel="添加关联器械">
-              <Text style={s.addMachineBtnText}>＋ 添加</Text>
+            <Text style={s.sectionTitle}>{t('category.linkedTitle')}</Text>
+            <TouchableOpacity style={s.addMachineBtn} onPress={() => { setPickerStep('gym'); setPickerGym(null); setAddModalVisible(true); }} accessibilityRole="button" accessibilityLabel={t('category.addLinkedA11y')}>
+              <Text style={s.addMachineBtnText}>{t('category.addLinked')}</Text>
             </TouchableOpacity>
           </View>
 
           {enrichedItems.length === 0 ? (
-            <Text style={s.emptyText}>还没有关联器械{'\n'}点右上角「添加」来关联</Text>
+            <Text style={s.emptyText}>{t('category.empty')}</Text>
           ) : (
             enrichedItems.map((item, idx) => (
               <Swipeable
                 key={idx}
                 renderRightActions={() => (
-                  <TouchableOpacity style={s.deleteAction} onPress={() => removeItem(item)} accessibilityRole="button" accessibilityLabel={`移除${item.machineName}`}>
-                    <Text style={s.deleteActionText}>删除</Text>
+                  <TouchableOpacity style={s.deleteAction} onPress={() => removeItem(item)} accessibilityRole="button" accessibilityLabel={t('category.removeA11y', { name: item.machineName })}>
+                    <Text style={s.deleteActionText}>{t('common.delete')}</Text>
                   </TouchableOpacity>
                 )}
               >
                 <View style={s.machineRow}>
                   <View style={s.machineInfo}>
                     <Text style={s.machineName}>{item.machineName}</Text>
-                    <Text style={s.gymName}>{item.gymName} · {item.count} 条记录</Text>
+                    <Text style={s.gymName}>{item.gymName} · {t('common.recordCount', { count: item.count })}</Text>
                     {item.best && (
-                      <Text style={s.machineBest}>最佳 {item.best.volume} 千克·次</Text>
+                      <Text style={s.machineBest}>{t('common.bestValue', { value: formatVolume(item.best.volume) })}</Text>
                     )}
                   </View>
                 </View>
@@ -228,18 +231,18 @@ export default function CategoryScreen({ route }) {
 
             <View style={s.modalHeader}>
               {pickerStep === 'machine' ? (
-                <TouchableOpacity onPress={() => setPickerStep('gym')} style={s.backBtn} accessibilityRole="button" accessibilityLabel="返回健身房列表">
+                <TouchableOpacity onPress={() => setPickerStep('gym')} style={s.backBtn} accessibilityRole="button" accessibilityLabel={t('category.backToGymsA11y')}>
                   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                     <Ionicons name="chevron-back" size={18} color={theme.accent} accessible={false} />
-                    <Text style={s.backBtnText}>返回</Text>
+                    <Text style={s.backBtnText}>{t('common.back')}</Text>
                   </View>
                 </TouchableOpacity>
               ) : <View style={{ width: 60 }} />}
               <Text style={s.modalTitle}>
-                {pickerStep === 'gym' ? '选择健身房' : pickerGym?.name}
+                {pickerStep === 'gym' ? t('category.pickGym') : pickerGym?.name}
               </Text>
-              <TouchableOpacity onPress={() => setAddModalVisible(false)} style={s.closeBtn} accessibilityRole="button" accessibilityLabel="关闭">
-                <Text style={s.closeBtnText}>关闭</Text>
+              <TouchableOpacity onPress={() => setAddModalVisible(false)} style={s.closeBtn} accessibilityRole="button" accessibilityLabel={t('common.close')}>
+                <Text style={s.closeBtnText}>{t('common.close')}</Text>
               </TouchableOpacity>
             </View>
 
@@ -257,7 +260,7 @@ export default function CategoryScreen({ route }) {
                     <Text style={s.pickArrow}>›</Text>
                   </TouchableOpacity>
                 )}
-                ListEmptyComponent={<Text style={s.emptyText}>还没有健身房</Text>}
+                ListEmptyComponent={<Text style={s.emptyText}>{t('category.noGyms')}</Text>}
               />
             )}
 
@@ -278,13 +281,13 @@ export default function CategoryScreen({ route }) {
                         {machine.name}
                       </Text>
                       {inCategory
-                        ? <Text style={s.alreadyTag}>已关联</Text>
+                        ? <Text style={s.alreadyTag}>{t('category.alreadyLinked')}</Text>
                         : <Text style={s.pickArrow}>＋</Text>
                       }
                     </TouchableOpacity>
                   );
                 }}
-                ListEmptyComponent={<Text style={s.emptyText}>该健身房没有器械</Text>}
+                ListEmptyComponent={<Text style={s.emptyText}>{t('category.noMachinesInGym')}</Text>}
               />
             )}
 

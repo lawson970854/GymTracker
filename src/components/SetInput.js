@@ -1,10 +1,12 @@
 import React, { useState, useMemo } from 'react';
 import { View, Text, TouchableOpacity, Modal, FlatList, StyleSheet } from 'react-native';
 import { useTheme, RADIUS, FONTS } from '../ThemeContext';
+import { useTranslation } from 'react-i18next';
 
 const REP_OPTIONS = Array.from({ length: 50 }, (_, i) => i + 1);
 
 function RepPicker({ value, onChange }) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const s = useMemo(() => makeStyles(theme), [theme]);
   const [visible, setVisible] = useState(false);
@@ -14,7 +16,7 @@ function RepPicker({ value, onChange }) {
       <TouchableOpacity
         style={s.repBtn}
         onPress={() => setVisible(true)}
-        accessibilityLabel={`当前次数 ${value}，点击更改`}
+        accessibilityLabel={t('setInput.currentRepsA11y', { count: value })}
         accessibilityRole="button"
       >
         <Text style={s.repVal}>{value}</Text>
@@ -27,10 +29,10 @@ function RepPicker({ value, onChange }) {
             style={StyleSheet.absoluteFill}
             activeOpacity={1}
             onPress={() => setVisible(false)}
-            accessibilityLabel="关闭"
+            accessibilityLabel={t('common.close')}
           />
           <View style={s.pickerBox}>
-            <Text style={s.pickerTitle}>选择次数</Text>
+            <Text style={s.pickerTitle}>{t('setInput.pickReps')}</Text>
             <FlatList
               data={REP_OPTIONS}
               keyExtractor={n => String(n)}
@@ -42,7 +44,7 @@ function RepPicker({ value, onChange }) {
                 <TouchableOpacity
                   style={[s.option, item === value && s.optionSelected]}
                   onPress={() => { onChange(item); setVisible(false); }}
-                  accessibilityLabel={`${item} 次`}
+                  accessibilityLabel={t('setInput.repsOptionA11y', { count: item })}
                   accessibilityRole="button"
                   accessibilityState={{ selected: item === value }}
                 >
@@ -61,6 +63,7 @@ function RepPicker({ value, onChange }) {
 }
 
 export default function SetInput({ sets, onChange }) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const s = useMemo(() => makeStyles(theme), [theme]);
 
@@ -78,21 +81,21 @@ export default function SetInput({ sets, onChange }) {
   return (
     <View>
       <View style={s.header}>
-        <Text style={s.label}>每组次数</Text>
+        <Text style={s.label}>{t('setInput.repsPerSet')}</Text>
         <View style={s.counter}>
           <TouchableOpacity
             style={s.btn}
             onPress={removeSet}
-            accessibilityLabel="减少一组"
+            accessibilityLabel={t('setInput.removeSetA11y')}
             accessibilityRole="button"
           >
             <Text style={s.btnText}>－</Text>
           </TouchableOpacity>
-          <Text style={s.setCount} accessibilityLabel={`共 ${sets.length} 组`}>{sets.length} 组</Text>
+          <Text style={s.setCount} accessibilityLabel={t('setInput.totalSetsA11y', { count: sets.length })}>{t('setInput.setCount', { count: sets.length })}</Text>
           <TouchableOpacity
             style={s.btn}
             onPress={addSet}
-            accessibilityLabel="增加一组"
+            accessibilityLabel={t('setInput.addSetA11y')}
             accessibilityRole="button"
           >
             <Text style={s.btnText}>＋</Text>
@@ -102,7 +105,7 @@ export default function SetInput({ sets, onChange }) {
 
       {sets.map((rep, i) => (
         <View key={i} style={s.row}>
-          <Text style={s.setLabel}>第 {i + 1} 组</Text>
+          <Text style={s.setLabel}>{t('setInput.setIndex', { index: i + 1 })}</Text>
           <RepPicker value={rep} onChange={v => updateRep(i, v)} />
         </View>
       ))}

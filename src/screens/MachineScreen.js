@@ -14,12 +14,15 @@ import SetInput from '../components/SetInput';
 import TrophyModal from '../components/TrophyModal';
 import InteractiveLineChart from '../components/InteractiveLineChart';
 import { useTheme, RADIUS, FONTS } from '../ThemeContext';
+import { useTranslation } from 'react-i18next';
+import { UNIT_WEIGHT, UNIT_VOLUME, formatWeight, formatSetLine, formatVolume } from '../constants/units';
 
 const W = Dimensions.get('window').width;
 
 const WEIGHT_OPTIONS = Array.from({ length: 300 }, (_, i) => i + 1);
 
 function WeightPicker({ value, onChange }) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const s = useMemo(() => makeStyles(theme), [theme]);
   const [visible, setVisible] = useState(false);
@@ -30,7 +33,7 @@ function WeightPicker({ value, onChange }) {
       <TouchableOpacity
         style={s.weightBtn}
         onPress={() => setVisible(true)}
-        accessibilityLabel={`当前重量 ${value} 千克，点击更改`}
+        accessibilityLabel={t('machine.currentWeightA11y', { weight: formatWeight(value) })}
         accessibilityRole="button"
       >
         <Text style={s.weightVal}>{value}</Text>
@@ -43,10 +46,10 @@ function WeightPicker({ value, onChange }) {
             style={StyleSheet.absoluteFill}
             activeOpacity={1}
             onPress={() => setVisible(false)}
-            accessibilityLabel="关闭"
+            accessibilityLabel={t('common.close')}
           />
           <View style={s.wPickerBox}>
-            <Text style={s.wPickerTitle}>选择重量（千克）</Text>
+            <Text style={s.wPickerTitle}>{t('machine.pickWeight', { unit: UNIT_WEIGHT })}</Text>
             <FlatList
               data={WEIGHT_OPTIONS}
               keyExtractor={n => String(n)}
@@ -58,7 +61,7 @@ function WeightPicker({ value, onChange }) {
                 <TouchableOpacity
                   style={[s.wOption, item === numVal && s.wOptionSelected]}
                   onPress={() => { onChange(String(item)); setVisible(false); }}
-                  accessibilityLabel={`${item} 千克`}
+                  accessibilityLabel={formatWeight(item)}
                   accessibilityRole="button"
                   accessibilityState={{ selected: item === numVal }}
                 >
@@ -111,6 +114,7 @@ const dp = StyleSheet.create({
 });
 
 export default function MachineScreen({ route }) {
+  const { t } = useTranslation();
   const { gymId, machineId } = route.params;
   const { theme } = useTheme();
   const s = useMemo(() => makeStyles(theme), [theme]);
@@ -158,7 +162,7 @@ export default function MachineScreen({ route }) {
     },
     onError: (err, vars, ctx) => {
       if (ctx?.prev) qc.setQueryData(GYM_DATA_KEY, ctx.prev);
-      Alert.alert('保存失败', '请检查网络连接');
+      Alert.alert(t('common.saveFailed'), t('common.networkError'));
     },
   });
 
@@ -175,7 +179,7 @@ export default function MachineScreen({ route }) {
     },
     onError: (err, vars, ctx) => {
       if (ctx?.prev) qc.setQueryData(GYM_DATA_KEY, ctx.prev);
-      Alert.alert('保存失败', '请检查网络连接');
+      Alert.alert(t('common.saveFailed'), t('common.networkError'));
     },
     onSettled: () => qc.invalidateQueries({ queryKey: GYM_DATA_KEY }),
   });
@@ -193,14 +197,14 @@ export default function MachineScreen({ route }) {
     },
     onError: (err, vars, ctx) => {
       if (ctx?.prev) qc.setQueryData(GYM_DATA_KEY, ctx.prev);
-      Alert.alert('删除失败', '请检查网络连接');
+      Alert.alert(t('common.deleteFailed'), t('common.networkError'));
     },
   });
 
   const save = () => {
     const w = parseFloat(weight);
-    if (!w || w <= 0) return Alert.alert('请输入有效重量');
-    if (sets.some(r => r <= 0)) return Alert.alert('请输入有效次数');
+    if (!w || w <= 0) return Alert.alert(t('machine.invalidWeight'));
+    if (sets.some(r => r <= 0)) return Alert.alert(t('machine.invalidReps'));
     const volume = calcVolume(w, sets);
     const maxVol = records.length ? Math.max(...records.map(r => r.volume)) : 0;
     if (volume > maxVol) setTrophy('gold');
@@ -218,8 +222,8 @@ export default function MachineScreen({ route }) {
 
   const saveEdit = () => {
     const w = parseFloat(editWeight);
-    if (!w || w <= 0) return Alert.alert('请输入有效重量');
-    if (editSets.some(r => r <= 0)) return Alert.alert('请输入有效次数');
+    if (!w || w <= 0) return Alert.alert(t('machine.invalidWeight'));
+    if (editSets.some(r => r <= 0)) return Alert.alert(t('machine.invalidReps'));
     const volume = calcVolume(w, editSets);
     const updated = { ...editRec, date: editDate, weight: w, sets: [...editSets], volume };
     setEditRec(null);
@@ -228,10 +232,10 @@ export default function MachineScreen({ route }) {
   };
 
   const deleteRecord = (rec) => {
-    Alert.alert('删除记录', `确认删除 ${rec.date} 的这条训练记录？`, [
-      { text: '取消', style: 'cancel' },
+    Alert.alert(t('machine.deleteRecordTitle'), t('machine.deleteRecordMessage', { date: rec.date }), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: '删除', style: 'destructive',
+        text: t('common.delete'), style: 'destructive',
         onPress: () => {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
           deleteMutation.mutate(rec.id);
@@ -245,8 +249,8 @@ export default function MachineScreen({ route }) {
       ActionSheetIOS.showActionSheetWithOptions(
         {
           title: rec.date,
-          message: `${rec.weight} 千克 × ${rec.sets?.length}组（${rec.sets?.join('/')} 次）  |  ${rec.volume.toLocaleString()} 千克·次`,
-          options: ['取消', '编辑', '删除'],
+          message: `${formatSetLine(rec.weight, rec.sets, '?')}  |  ${formatVolume(rec.volume)}`,
+          options: [t('common.cancel'), t('common.edit'), t('common.delete')],
           destructiveButtonIndex: 2,
           cancelButtonIndex: 0,
         },
@@ -258,11 +262,11 @@ export default function MachineScreen({ route }) {
     } else {
       Alert.alert(
         rec.date,
-        `${rec.weight} 千克 × ${rec.sets?.length}组（${rec.sets?.join('/')} 次）  |  ${rec.volume.toLocaleString()} 千克·次`,
+        `${formatSetLine(rec.weight, rec.sets, '?')}  |  ${formatVolume(rec.volume)}`,
         [
-          { text: '编辑', onPress: () => openEdit(rec) },
-          { text: '删除', style: 'destructive', onPress: () => deleteRecord(rec) },
-          { text: '取消', style: 'cancel' },
+          { text: t('common.edit'), onPress: () => openEdit(rec) },
+          { text: t('common.delete'), style: 'destructive', onPress: () => deleteRecord(rec) },
+          { text: t('common.cancel'), style: 'cancel' },
         ]
       );
     }
@@ -294,11 +298,11 @@ export default function MachineScreen({ route }) {
               <View style={s.bestBadge}>
                 <Ionicons name="trophy" size={16} color="#fff" />
               </View>
-              <Text style={s.bestLabel} accessible={false}>历史最佳</Text>
+              <Text style={s.bestLabel} accessible={false}>{t('machine.bestLabel')}</Text>
             </View>
-            <Text style={s.bestVolume}>{bestRecord.volume.toLocaleString()}<Text style={s.unitSuffix}> 千克·次</Text></Text>
+            <Text style={s.bestVolume}>{bestRecord.volume.toLocaleString()}<Text style={s.unitSuffix}> {UNIT_VOLUME}</Text></Text>
             <Text style={s.bestDetail}>
-              {bestRecord.weight} 千克 × {bestRecord.sets.length}组（{bestRecord.sets.join('/')} 次） · {bestRecord.date}
+              {formatSetLine(bestRecord.weight, bestRecord.sets)} · {bestRecord.date}
             </Text>
           </View>
         )}
@@ -307,30 +311,30 @@ export default function MachineScreen({ route }) {
           <View style={s.statsRow}>
             <View style={s.statCard}>
               <Text style={s.statNum} maxFontSizeMultiplier={1.3}>{records.length}</Text>
-              <Text style={s.statLabel} maxFontSizeMultiplier={1.3}>训练记录</Text>
+              <Text style={s.statLabel} maxFontSizeMultiplier={1.3}>{t('common.statRecords')}</Text>
             </View>
             <View style={s.statCard}>
               <Text style={s.statNum} maxFontSizeMultiplier={1.3}>{trainDays}</Text>
-              <Text style={s.statLabel} maxFontSizeMultiplier={1.3}>训练天数</Text>
+              <Text style={s.statLabel} maxFontSizeMultiplier={1.3}>{t('common.statDays')}</Text>
             </View>
             <View style={s.statCard}>
               <Text style={s.statNum} maxFontSizeMultiplier={1.3}>
                 {totalVolume.toLocaleString()}
               </Text>
-              <Text style={s.statLabel} maxFontSizeMultiplier={1.3}>总训练量</Text>
+              <Text style={s.statLabel} maxFontSizeMultiplier={1.3}>{t('common.statVolume')}</Text>
             </View>
           </View>
         )}
 
         <View style={s.formCard}>
-          <Text style={s.sectionTitle}>训练记录</Text>
+          <Text style={s.sectionTitle}>{t('machine.sectionRecords')}</Text>
 
           <View style={s.dateRow}>
-            <Text style={s.fieldLabel}>日期</Text>
+            <Text style={s.fieldLabel}>{t('machine.dateLabel')}</Text>
             <DatePicker value={date} onChange={setDate} />
           </View>
 
-          <Text style={[s.fieldLabel, { marginTop: 14 }]}>重量（千克）</Text>
+          <Text style={[s.fieldLabel, { marginTop: 14 }]}>{t('machine.weightLabel', { unit: UNIT_WEIGHT })}</Text>
           <WeightPicker value={weight} onChange={setWeight} />
 
           <View style={{ marginTop: 14 }}>
@@ -339,18 +343,18 @@ export default function MachineScreen({ route }) {
 
           {weight ? (
             <Text style={s.preview}>
-              预计训练量：{calcVolume(parseFloat(weight) || 0, sets)} 千克·次
+              {t('machine.estimatedVolume', { volume: formatVolume(calcVolume(parseFloat(weight) || 0, sets)) })}
             </Text>
           ) : null}
 
-          <TouchableOpacity style={s.saveBtn} onPress={save} accessibilityRole="button" accessibilityLabel="保存记录">
-            <Text style={s.saveBtnText}>保存记录</Text>
+          <TouchableOpacity style={s.saveBtn} onPress={save} accessibilityRole="button" accessibilityLabel={t('machine.saveRecord')}>
+            <Text style={s.saveBtnText}>{t('machine.saveRecord')}</Text>
           </TouchableOpacity>
         </View>
 
         {hasChart && (
           <View style={s.chartCard}>
-            <Text style={s.sectionTitle}>单项趋势</Text>
+            <Text style={s.sectionTitle}>{t('machine.trendTitle')}</Text>
             <InteractiveLineChart
               labels={labels}
               data={chartValues}
@@ -363,21 +367,21 @@ export default function MachineScreen({ route }) {
 
         {records.length > 0 && (
           <View style={s.historyCard}>
-            <Text style={s.sectionTitle}>历史记录</Text>
+            <Text style={s.sectionTitle}>{t('machine.historyTitle')}</Text>
             {records.slice(0, 20).map((r, i) => (
               <TouchableOpacity
                 key={r.id}
                 style={[s.histRow, i === 0 && { borderTopWidth: 0 }]}
                 onPress={() => showActions(r)}
                 accessibilityRole="button"
-                accessibilityLabel={`${r.date}，${r.weight}千克，${r.sets?.join('/')}次，训练量${r.volume}千克·次，点击查看操作`}
+                accessibilityLabel={t('machine.recordA11y', { date: r.date, setLine: formatSetLine(r.weight, r.sets, '?'), volume: formatVolume(r.volume) })}
               >
                 <View style={s.histTop}>
                   <Text style={s.histDate} maxFontSizeMultiplier={1.2}>{r.date}</Text>
-                  <Text style={s.histVol} maxFontSizeMultiplier={1.2}>{r.volume.toLocaleString()} 千克·次</Text>
+                  <Text style={s.histVol} maxFontSizeMultiplier={1.2}>{formatVolume(r.volume)}</Text>
                 </View>
                 <Text style={s.histDetail} maxFontSizeMultiplier={1.2}>
-                  {r.weight} 千克 × {r.sets?.length}组（{r.sets?.join('/')} 次）
+                  {formatSetLine(r.weight, r.sets, '?')}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -393,14 +397,14 @@ export default function MachineScreen({ route }) {
           <TouchableOpacity style={StyleSheet.absoluteFillObject} activeOpacity={1} onPress={() => setEditRec(null)} />
           <View style={[s.editSheet, { paddingBottom: sheetPaddingBottom }]} onStartShouldSetResponder={() => true}>
             <View style={s.editHandle} />
-            <Text style={s.editTitle}>编辑记录</Text>
+            <Text style={s.editTitle}>{t('machine.editTitle')}</Text>
 
             <View style={s.dateRow}>
-              <Text style={s.fieldLabel}>日期</Text>
+              <Text style={s.fieldLabel}>{t('machine.dateLabel')}</Text>
               <DatePicker value={editDate} onChange={setEditDate} />
             </View>
 
-            <Text style={[s.fieldLabel, { marginTop: 14 }]}>重量（千克）</Text>
+            <Text style={[s.fieldLabel, { marginTop: 14 }]}>{t('machine.weightLabel', { unit: UNIT_WEIGHT })}</Text>
             <WeightPicker value={editWeight} onChange={setEditWeight} />
 
             <View style={{ marginTop: 14 }}>
@@ -409,16 +413,16 @@ export default function MachineScreen({ route }) {
 
             {editWeight ? (
               <Text style={s.preview}>
-                训练量：{calcVolume(parseFloat(editWeight) || 0, editSets)} 千克·次
+                {t('machine.volumeLabel', { volume: formatVolume(calcVolume(parseFloat(editWeight) || 0, editSets)) })}
               </Text>
             ) : null}
 
             <View style={s.editActions}>
-              <TouchableOpacity style={s.editCancelBtn} onPress={() => setEditRec(null)} accessibilityRole="button" accessibilityLabel="取消编辑">
-                <Text style={s.editCancelText}>取消</Text>
+              <TouchableOpacity style={s.editCancelBtn} onPress={() => setEditRec(null)} accessibilityRole="button" accessibilityLabel={t('machine.cancelEditA11y')}>
+                <Text style={s.editCancelText}>{t('common.cancel')}</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={s.editSaveBtn} onPress={saveEdit} accessibilityRole="button" accessibilityLabel="保存编辑">
-                <Text style={s.editSaveText}>保存</Text>
+              <TouchableOpacity style={s.editSaveBtn} onPress={saveEdit} accessibilityRole="button" accessibilityLabel={t('machine.saveEditA11y')}>
+                <Text style={s.editSaveText}>{t('common.save')}</Text>
               </TouchableOpacity>
             </View>
           </View>

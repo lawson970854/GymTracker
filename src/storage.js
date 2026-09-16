@@ -2,6 +2,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from './supabase';
 import * as local from './localStore';
+import i18n from './i18n';
 
 const PROFILE_CACHE_KEY = '@gymtracker:profile';
 
@@ -248,7 +249,7 @@ export async function uploadAvatar(localUri) {
   if (!userId) return local.saveAvatarLocally(localUri);
 
   const { data: { session } } = await supabase.auth.getSession();
-  if (!session) throw new Error('未登录');
+  if (!session) throw new Error(i18n.t('errors.notSignedIn'));
 
   const ext = localUri.split('.').pop()?.toLowerCase() || 'jpg';
   const mime = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
@@ -269,7 +270,7 @@ export async function uploadAvatar(localUri) {
   });
 
   if (result.status >= 400) {
-    throw new Error(`上传失败 (${result.status}): ${result.body}`);
+    throw new Error(i18n.t('errors.uploadFailed', { status: result.status, body: result.body }));
   }
 
   const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/avatars/${storagePath}`;

@@ -29,19 +29,22 @@ import CategoryScreen from './src/screens/CategoryScreen';
 
 import ProfileScreen from './src/screens/ProfileScreen';
 import { ThemeProvider, useTheme } from './src/ThemeContext';
+import { LocaleProvider } from './src/i18n/LocaleContext';
+import { useTranslation } from 'react-i18next';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 
 function GymStack() {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   return (
     <Stack.Navigator screenOptions={{
       headerTitleStyle: { fontFamily: 'Manrope_700Bold', fontSize: 17 },
       headerTintColor: theme.accent,
       headerStyle: { elevation: 0, shadowOpacity: 0, backgroundColor: theme.bg, borderBottomWidth: 0 },
     }}>
-      <Stack.Screen name="Home" component={HomeScreen} options={{ title: '健身记录' }} />
+      <Stack.Screen name="Home" component={HomeScreen} options={{ title: t('nav.homeTitle') }} />
       <Stack.Screen name="Gym" component={GymScreen} options={({ route }) => ({ title: route.params.gymName })} />
       <Stack.Screen name="Machine" component={MachineScreen} options={({ route }) => ({ title: route.params.machineName })} />
     </Stack.Navigator>
@@ -50,13 +53,14 @@ function GymStack() {
 
 function CategoryStack() {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   return (
     <Stack.Navigator screenOptions={{
       headerTitleStyle: { fontFamily: 'Manrope_700Bold', fontSize: 17 },
       headerTintColor: theme.accent,
       headerStyle: { elevation: 0, shadowOpacity: 0, backgroundColor: theme.bg, borderBottomWidth: 0 },
     }}>
-      <Stack.Screen name="CategoryList" component={CategoryListScreen} options={{ title: '分类管理' }} />
+      <Stack.Screen name="CategoryList" component={CategoryListScreen} options={{ title: t('nav.categoryListTitle') }} />
       <Stack.Screen name="Category" component={CategoryScreen} options={({ route }) => ({ title: route.params.categoryName })} />
     </Stack.Navigator>
   );
@@ -64,6 +68,7 @@ function CategoryStack() {
 
 function MainTabs() {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   return (
     <Tab.Navigator
       screenOptions={{
@@ -85,7 +90,7 @@ function MainTabs() {
         name="GymTab"
         component={GymStack}
         options={{
-          tabBarLabel: '记录',
+          tabBarLabel: t('nav.recordTab'),
           tabBarIcon: ({ color, size }) => <Ionicons name="barbell-outline" size={size} color={color} />,
         }}
       />
@@ -93,7 +98,7 @@ function MainTabs() {
         name="CategoryTab"
         component={CategoryStack}
         options={{
-          tabBarLabel: '分类',
+          tabBarLabel: t('nav.categoryTab'),
           tabBarIcon: ({ color, size }) => <Ionicons name="grid-outline" size={size} color={color} />,
         }}
       />
@@ -102,7 +107,7 @@ function MainTabs() {
         component={CalendarScreen}
         options={{
           header: () => null,
-          tabBarLabel: '日历',
+          tabBarLabel: t('nav.calendarTab'),
           tabBarIcon: ({ color, size }) => <Ionicons name="calendar-outline" size={size} color={color} />,
         }}
       />
@@ -112,7 +117,7 @@ function MainTabs() {
         component={ProfileScreen}
         options={{
           header: () => null,
-          tabBarLabel: '我的',
+          tabBarLabel: t('nav.profileTab'),
           tabBarIcon: ({ color, size }) => <Ionicons name="person-outline" size={size} color={color} />,
         }}
       />
@@ -146,6 +151,7 @@ function AppContent() {
 // 本地数据上云期间盖一层，避免用户在数据搬一半时操作
 function MigratingOverlay() {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   return (
     <View style={{
       ...StyleSheet.absoluteFillObject,
@@ -154,7 +160,7 @@ function MigratingOverlay() {
     }}>
       <ActivityIndicator size="large" color={theme.accent} />
       <Text style={{ color: theme.textMuted, fontFamily: 'Manrope_600SemiBold', fontSize: 14 }}>
-        正在把本机数据同步到云端…
+        {t('app.migrating')}
       </Text>
     </View>
   );
@@ -230,10 +236,12 @@ function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <PersistQueryClientProvider client={queryClient} persistOptions={{ persister: asyncStoragePersister }}>
-        <ThemeProvider>
-          {showAuthScreen ? <AuthScreen onSkip={hideAuth} /> : <AppContent />}
-          {migrating && <MigratingOverlay />}
-        </ThemeProvider>
+        <LocaleProvider>
+          <ThemeProvider>
+            {showAuthScreen ? <AuthScreen onSkip={hideAuth} /> : <AppContent />}
+            {migrating && <MigratingOverlay />}
+          </ThemeProvider>
+        </LocaleProvider>
       </PersistQueryClientProvider>
     </GestureHandlerRootView>
   );

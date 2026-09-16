@@ -12,8 +12,10 @@ import { fetchGymData, addCategory as dbAddCategory, deleteCategory as dbDeleteC
 import { GYM_DATA_KEY } from '../queryClient';
 import { useTheme, RADIUS, FONTS } from '../ThemeContext';
 import RenameModal from '../components/RenameModal';
+import { useTranslation } from 'react-i18next';
 
 export default function CategoryListScreen({ navigation }) {
+  const { t } = useTranslation();
   const headerHeight = useHeaderHeight();
   const { theme } = useTheme();
   const s = useMemo(() => makeStyles(theme), [theme]);
@@ -38,7 +40,7 @@ export default function CategoryListScreen({ navigation }) {
     },
     onError: (err, vars, ctx) => {
       if (ctx?.prev) qc.setQueryData(GYM_DATA_KEY, ctx.prev);
-      Alert.alert('添加失败', '请检查网络连接');
+      Alert.alert(t('common.addFailed'), t('common.networkError'));
     },
     onSettled: () => qc.invalidateQueries({ queryKey: GYM_DATA_KEY }),
   });
@@ -56,7 +58,7 @@ export default function CategoryListScreen({ navigation }) {
     },
     onError: (err, vars, ctx) => {
       if (ctx?.prev) qc.setQueryData(GYM_DATA_KEY, ctx.prev);
-      Alert.alert('删除失败', '请检查网络连接');
+      Alert.alert(t('common.deleteFailed'), t('common.networkError'));
     },
     onSettled: () => qc.invalidateQueries({ queryKey: GYM_DATA_KEY }),
   });
@@ -74,7 +76,7 @@ export default function CategoryListScreen({ navigation }) {
     },
     onError: (err, vars, ctx) => {
       if (ctx?.prev) qc.setQueryData(GYM_DATA_KEY, ctx.prev);
-      Alert.alert('重命名失败', '请检查网络连接');
+      Alert.alert(t('common.renameFailed'), t('common.networkError'));
     },
     onSettled: () => qc.invalidateQueries({ queryKey: GYM_DATA_KEY }),
   });
@@ -89,10 +91,10 @@ export default function CategoryListScreen({ navigation }) {
   };
 
   const deleteCategory = (cat) => {
-    Alert.alert('删除分类', `确认删除分类「${cat.name}」？（不会删除器械和记录）`, [
-      { text: '取消', style: 'cancel' },
+    Alert.alert(t('categoryList.deleteTitle'), t('categoryList.deleteMessage', { name: cat.name }), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: '删除', style: 'destructive',
+        text: t('common.delete'), style: 'destructive',
         onPress: () => {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
           deleteMutation.mutate(cat.id);
@@ -116,20 +118,20 @@ export default function CategoryListScreen({ navigation }) {
                   <TouchableOpacity
                     style={[s.swipeAct, s.swipeEdit]}
                     onPress={() => setRenamingCat(item)}
-                    accessibilityLabel={`重命名${item.name}`}
+                    accessibilityLabel={t('categoryList.renameA11y', { name: item.name })}
                     accessibilityRole="button"
                   >
                     <Ionicons name="pencil" size={18} color="#fff" />
-                    <Text style={s.swipeActText}>编辑</Text>
+                    <Text style={s.swipeActText}>{t('common.edit')}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={[s.swipeAct, s.swipeDel]}
                     onPress={() => deleteCategory(item)}
-                    accessibilityLabel={`删除${item.name}`}
+                    accessibilityLabel={t('categoryList.deleteA11y', { name: item.name })}
                     accessibilityRole="button"
                   >
                     <Ionicons name="trash-outline" size={18} color="#fff" />
-                    <Text style={s.swipeActText}>删除</Text>
+                    <Text style={s.swipeActText}>{t('common.delete')}</Text>
                   </TouchableOpacity>
                 </View>
               )}
@@ -139,28 +141,28 @@ export default function CategoryListScreen({ navigation }) {
                 onPress={() => navigation.navigate('Category', { categoryId: item.id, categoryName: item.name })}
                 accessibilityRole="button"
                 accessibilityLabel={item.name}
-                accessibilityHint="进入分类详情"
+                accessibilityHint={t('categoryList.openHint')}
               >
                 <View style={s.rowIcon}>
                   <Ionicons name="pricetag-outline" size={22} color={theme.accent} />
                 </View>
                 <View style={{ flex: 1, minWidth: 0 }}>
                   <Text style={s.catName} numberOfLines={1}>{item.name}</Text>
-                  <Text style={s.catSub} numberOfLines={1}>{item.items?.length || 0} 个器械</Text>
+                  <Text style={s.catSub} numberOfLines={1}>{t('common.machineCount', { count: item.items?.length || 0 })}</Text>
                 </View>
                 <Ionicons name="chevron-forward" size={18} color={theme.textFaint} />
               </TouchableOpacity>
             </Swipeable>
           )}
           ListEmptyComponent={
-            <Text style={s.empty}>还没有分类{'\n'}点下方按钮新建</Text>
+            <Text style={s.empty}>{t('categoryList.empty')}</Text>
           }
         />
         {adding ? (
           <View style={s.addRow}>
             <TextInput
               style={s.addInput}
-              placeholder="分类名称，如：胸推"
+              placeholder={t('categoryList.namePlaceholder')}
               placeholderTextColor={theme.textFaint}
               value={newName}
               onChangeText={setNewName}
@@ -168,13 +170,13 @@ export default function CategoryListScreen({ navigation }) {
               autoCorrect={false}
               returnKeyType="done"
               onSubmitEditing={addCategory}
-              accessibilityLabel="分类名称"
+              accessibilityLabel={t('categoryList.nameA11y')}
             />
             <TouchableOpacity style={s.confirmBtn} onPress={addCategory} accessibilityRole="button">
-              <Text style={s.confirmText}>确认</Text>
+              <Text style={s.confirmText}>{t('common.confirm')}</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={s.cancelBtn} onPress={() => { setAdding(false); setNewName(''); }} accessibilityRole="button" accessibilityLabel="取消">
-              <Text style={s.cancelText}>取消</Text>
+            <TouchableOpacity style={s.cancelBtn} onPress={() => { setAdding(false); setNewName(''); }} accessibilityRole="button" accessibilityLabel={t('common.cancel')}>
+              <Text style={s.cancelText}>{t('common.cancel')}</Text>
             </TouchableOpacity>
           </View>
         ) : (
@@ -182,11 +184,11 @@ export default function CategoryListScreen({ navigation }) {
             style={s.addBtn}
             onPress={() => setAdding(true)}
             accessibilityRole="button"
-            accessibilityLabel="新建分类"
+            accessibilityLabel={t('categoryList.addCategory')}
           >
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
               <Ionicons name="add" size={20} color="#fff" accessible={false} />
-              <Text style={s.addBtnText}>新建分类</Text>
+              <Text style={s.addBtnText}>{t('categoryList.addCategory')}</Text>
             </View>
           </TouchableOpacity>
         )}
@@ -195,7 +197,7 @@ export default function CategoryListScreen({ navigation }) {
 
       <RenameModal
         visible={!!renamingCat}
-        title="重命名分类"
+        title={t('categoryList.renameTitle')}
         initialValue={renamingCat?.name || ''}
         onCancel={() => setRenamingCat(null)}
         onConfirm={(name) => {

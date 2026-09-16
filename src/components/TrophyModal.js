@@ -2,8 +2,10 @@ import React, { useEffect, useRef, useMemo } from 'react';
 import { Modal, View, Text, Animated, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme, RADIUS, FONTS } from '../ThemeContext';
+import { useTranslation } from 'react-i18next';
 
 export default function TrophyModal({ visible, type, onClose }) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const s = useMemo(() => makeStyles(theme), [theme]);
   const scale = useRef(new Animated.Value(0)).current;
@@ -42,15 +44,15 @@ export default function TrophyModal({ visible, type, onClose }) {
         style={s.overlay}
         onPress={onClose}
         activeOpacity={1}
-        accessibilityLabel={isGold ? '历史最高记录，点击关闭' : '今日最佳，点击关闭'}
+        accessibilityLabel={isGold ? t('trophy.goldA11y') : t('trophy.dailyA11y')}
         accessibilityRole="button"
       >
         <Animated.View style={[s.card, { transform: [{ scale }, { translateY: bounce }] }]}>
           <View style={[s.iconCircle, !isGold && { backgroundColor: theme.textMuted }]}>
             <Ionicons name="trophy" size={40} color="#fff" />
           </View>
-          <Text style={s.title}>{isGold ? '历史最高记录！' : '今日最佳！'}</Text>
-          <Text style={s.sub}>{isGold ? '突破个人记录，太厉害了！' : '超越今日之前成绩！'}</Text>
+          <Text style={s.title}>{isGold ? t('trophy.goldTitle') : t('trophy.dailyTitle')}</Text>
+          <Text style={s.sub}>{isGold ? t('trophy.goldSub') : t('trophy.dailySub')}</Text>
         </Animated.View>
       </TouchableOpacity>
     </Modal>

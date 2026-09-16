@@ -9,12 +9,16 @@ import { fetchGymData, today } from '../storage';
 import { GYM_DATA_KEY } from '../queryClient';
 import InteractiveLineChart from '../components/InteractiveLineChart';
 import { useTheme, RADIUS, FONTS } from '../ThemeContext';
+import { useTranslation } from 'react-i18next';
+import { UNIT_VOLUME, formatSetLine, formatVolume } from '../constants/units';
 
 const W = Dimensions.get('window').width;
-const WEEKDAYS = ['一', '二', '三', '四', '五', '六', '日'];
 
 // ─── 自定义日历网格 ───────────────────────────────────────────────
 function CalendarGrid({ selectedDate, onSelect, recordDates }) {
+  const { t: translate } = useTranslation();
+  // 星期名暂时来自语言包；第 3 步会换成 Intl.DateTimeFormat 按 locale 生成
+  const WEEKDAYS = translate('calendar.weekdays', { returnObjects: true });
   const { theme: t } = useTheme();
   const s = useMemo(() => makeCalStyles(t), [t]);
   const todayStr = today();
@@ -67,7 +71,7 @@ function CalendarGrid({ selectedDate, onSelect, recordDates }) {
         <TouchableOpacity onPress={prevMonth} style={s.navBtn} activeOpacity={0.7}>
           <Ionicons name="chevron-back" size={20} color={t.accentInk} />
         </TouchableOpacity>
-        <Text style={s.headerTitle}>{viewYear} 年 {viewMonth} 月</Text>
+        <Text style={s.headerTitle}>{translate('calendar.monthTitle', { year: viewYear, month: viewMonth })}</Text>
         <TouchableOpacity onPress={nextMonth} style={s.navBtn} activeOpacity={0.7}>
           <Ionicons name="chevron-forward" size={20} color={t.accentInk} />
         </TouchableOpacity>
@@ -153,6 +157,7 @@ const makeCalStyles = (t) => StyleSheet.create({
 
 // ─── 主屏 ─────────────────────────────────────────────────────────
 export default function CalendarScreen() {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const s = useMemo(() => makeStyles(theme), [theme]);
   const [selectedDate, setSelectedDate] = useState(today());
@@ -171,11 +176,11 @@ export default function CalendarScreen() {
     const gym     = gyms.find(g => g.id === rec.gymId);
     const machine = gym?.machines?.find(m => m.id === rec.machineId);
     if (!gymGroups[rec.gymId]) {
-      gymGroups[rec.gymId] = { gymName: gym?.name || '未知健身房', machines: {} };
+      gymGroups[rec.gymId] = { gymName: gym?.name || t('calendar.unknownGym'), machines: {} };
     }
     if (!gymGroups[rec.gymId].machines[rec.machineId]) {
       gymGroups[rec.gymId].machines[rec.machineId] = {
-        machineName: machine?.name || '未知器械',
+        machineName: machine?.name || t('calendar.unknownMachine'),
         records: [],
       };
     }
@@ -192,7 +197,7 @@ export default function CalendarScreen() {
     <SafeAreaView style={s.safe}>
       <ScrollView style={s.scroll} contentContainerStyle={s.content} nestedScrollEnabled>
 
-        <Text style={s.pageTitle}>日历</Text>
+        <Text style={s.pageTitle}>{t('calendar.pageTitle')}</Text>
 
         {/* 自定义日历网格 */}
         <View style={s.pickerCard}>
@@ -205,17 +210,17 @@ export default function CalendarScreen() {
 
         {dayRecords.length === 0 ? (
           <View style={s.emptyCard}>
-            <Text style={s.emptyText}>该日期没有训练记录</Text>
+            <Text style={s.emptyText}>{t('calendar.noRecords')}</Text>
           </View>
         ) : (
           <>
             <View style={s.summaryCard}>
               <View style={s.summaryTopRow}>
-                <Text style={s.summaryLabel}>当日总训练量</Text>
-                <Text style={s.summaryUnit}>千克·次</Text>
+                <Text style={s.summaryLabel}>{t('calendar.dayVolumeLabel')}</Text>
+                <Text style={s.summaryUnit}>{UNIT_VOLUME}</Text>
               </View>
               <Text style={s.summaryValue}>{totalVolume.toLocaleString()}</Text>
-              <Text style={s.summaryCount}>{dayRecords.length} 条记录</Text>
+              <Text style={s.summaryCount}>{t('common.recordCount', { count: dayRecords.length })}</Text>
             </View>
 
             {Object.entries(gymGroups).map(([gymId, gymGroup]) => (
@@ -227,9 +232,9 @@ export default function CalendarScreen() {
                     {mg.records.map(r => (
                       <View key={r.id} style={s.recRow}>
                         <Text style={s.recDetail}>
-                          {r.weight} 千克 × {r.sets?.length || '?'}组（{r.sets?.join('/') || '?'} 次）
+                          {formatSetLine(r.weight, r.sets, '?')}
                         </Text>
-                        <Text style={s.recVol}>{r.volume.toLocaleString()} 千克·次</Text>
+                        <Text style={s.recVol}>{formatVolume(r.volume)}</Text>
                       </View>
                     ))}
                   </View>
@@ -241,7 +246,7 @@ export default function CalendarScreen() {
 
         {hasTrend && (
           <View style={s.chartCard}>
-            <Text style={s.chartTitle}>每日训练量趋势</Text>
+            <Text style={s.chartTitle}>{t('calendar.chartTitle')}</Text>
             <InteractiveLineChart
               labels={trendEntries.map(([d]) => d.slice(5))}
               data={trendEntries.map(([, v]) => v)}

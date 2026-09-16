@@ -4,9 +4,11 @@ import {
   KeyboardAvoidingView, Platform, StyleSheet,
 } from 'react-native';
 import { useTheme, RADIUS, FONTS } from '../ThemeContext';
+import { useTranslation } from 'react-i18next';
 
 // 通用重命名弹窗：传入当前名称和回调，即可让用户修改任何"名称"字段
-export default function RenameModal({ visible, title = '重命名', initialValue = '', onCancel, onConfirm }) {
+export default function RenameModal({ visible, title, initialValue = '', onCancel, onConfirm }) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const s = useMemo(() => makeStyles(theme), [theme]);
   const [value, setValue] = useState(initialValue);
@@ -30,7 +32,7 @@ export default function RenameModal({ visible, title = '重命名', initialValue
       >
         <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={onCancel} />
         <View style={s.card}>
-          <Text style={s.title}>{title}</Text>
+          <Text style={s.title}>{title ?? t('common.rename')}</Text>
           <TextInput
             style={s.input}
             value={value}
@@ -43,10 +45,10 @@ export default function RenameModal({ visible, title = '重命名', initialValue
           />
           <View style={s.btnRow}>
             <TouchableOpacity style={s.cancelBtn} onPress={onCancel}>
-              <Text style={s.cancelText}>取消</Text>
+              <Text style={s.cancelText}>{t('common.cancel')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={s.confirmBtn} onPress={handleConfirm}>
-              <Text style={s.confirmText}>确认</Text>
+              <Text style={s.confirmText}>{t('common.confirm')}</Text>
             </TouchableOpacity>
           </View>
         </View>

@@ -12,8 +12,10 @@ import { fetchGymData, loadProfile, saveProfile, uploadAvatar, clearAllData, del
 import { GYM_DATA_KEY } from '../queryClient';
 import { supabase } from '../supabase';
 import { showAuth } from '../authGate';
-import { useTheme, RADIUS, FONTS, SCHEMES, SCHEME_LABELS } from '../ThemeContext';
+import { useTheme, RADIUS, FONTS, SCHEMES, SCHEME_LABEL_KEYS } from '../ThemeContext';
 import { REGIONS, PROVINCE_NAMES, findProvinceByCity, getCitiesForProvince } from '../constants/regions';
+import { useTranslation } from 'react-i18next';
+import { UNIT_HEIGHT, UNIT_WEIGHT, UNIT_VOLUME } from '../constants/units';
 
 // 配色 swatch 用色（与 ThemeContext 内 light 模式 accent 对齐）
 const SCHEME_SWATCH = {
@@ -26,8 +28,8 @@ const SCHEME_SWATCH = {
 };
 
 const THEME_OPTIONS = [
-  { value: 'light', label: '明亮', icon: 'sunny-outline' },
-  { value: 'dark', label: '深色', icon: 'moon-outline' },
+  { value: 'light', labelKey: 'profile.themeLight', icon: 'sunny-outline' },
+  { value: 'dark', labelKey: 'profile.themeDark', icon: 'moon-outline' },
 ];
 
 const PROFILE_FIELDS = [
@@ -96,6 +98,7 @@ const wp = StyleSheet.create({
 });
 
 export default function ProfileScreen() {
+  const { t } = useTranslation();
   const { theme, mode, setMode, isDark } = useTheme();
   const s = useMemo(() => makeStyles(theme, isDark), [theme, isDark]);
   const insets = useSafeAreaInsets();
@@ -146,7 +149,7 @@ export default function ProfileScreen() {
   const pickAvatar = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('需要权限', '请在系统设置中允许访问相册');
+      Alert.alert(t('profile.permissionTitle'), t('profile.permissionMessage'));
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -164,7 +167,7 @@ export default function ProfileScreen() {
       await saveProfile(updated);
       setProfile(updated);
     } catch (e) {
-      Alert.alert('上传失败', e.message || '请检查网络后重试');
+      Alert.alert(t('profile.uploadFailed'), e.message || t('profile.networkRetry'));
     } finally {
       setAvatarUploading(false);
     }
@@ -196,21 +199,21 @@ export default function ProfileScreen() {
   };
 
   const handleClearAllData = () => {
-    Alert.alert('清除所有数据', '此操作将删除所有健身房、器械和训练记录，且无法恢复。', [
-      { text: '取消', style: 'cancel' },
+    Alert.alert(t('profile.clearTitle'), t('profile.clearMessage'), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: '继续', style: 'destructive', onPress: () => {
-          Alert.alert('再次确认', '数据清除后无法找回，确定要继续吗？', [
-            { text: '取消', style: 'cancel' },
-            { text: '确认清除', style: 'destructive', onPress: async () => {
+        text: t('profile.continueBtn'), style: 'destructive', onPress: () => {
+          Alert.alert(t('profile.clearConfirmTitle'), t('profile.clearConfirmMessage'), [
+            { text: t('common.cancel'), style: 'cancel' },
+            { text: t('profile.clearConfirmBtn'), style: 'destructive', onPress: async () => {
               try {
                 await clearAllData();
                 // 清空缓存，让所有屏幕立即重新拉取空数据
                 qc.setQueryData(GYM_DATA_KEY, { gyms: [], records: [], categories: [] });
                 qc.invalidateQueries({ queryKey: GYM_DATA_KEY });
-                Alert.alert('已清除', '所有训练数据已删除。');
+                Alert.alert(t('profile.clearedTitle'), t('profile.clearedMessage'));
               } catch (e) {
-                Alert.alert('清除失败', e.message || '请检查网络后重试');
+                Alert.alert(t('profile.clearFailed'), e.message || t('profile.networkRetry'));
               }
             }},
           ]);
@@ -221,21 +224,21 @@ export default function ProfileScreen() {
 
   const handleDeleteAccount = () => {
     Alert.alert(
-      '删除账号',
-      '将永久删除你的账号、个人资料和全部训练记录。此操作无法撤销，也无法找回。',
+      t('profile.deleteAccountTitle'),
+      t('profile.deleteAccountMessage'),
       [
-        { text: '取消', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: '继续', style: 'destructive', onPress: () => {
-            Alert.alert('最后确认', '删除后需要重新注册才能使用，确定删除账号吗？', [
-              { text: '取消', style: 'cancel' },
-              { text: '确认删除账号', style: 'destructive', onPress: async () => {
+          text: t('profile.continueBtn'), style: 'destructive', onPress: () => {
+            Alert.alert(t('profile.deleteAccountConfirmTitle'), t('profile.deleteAccountConfirmMessage'), [
+              { text: t('common.cancel'), style: 'cancel' },
+              { text: t('profile.deleteAccountConfirmBtn'), style: 'destructive', onPress: async () => {
                 try {
                   await deleteAccount();
                   // 账号已不存在，登出触发 App.js 清空缓存并回到登录页
                   await supabase.auth.signOut();
                 } catch (e) {
-                  Alert.alert('删除失败', e.message || '请检查网络后重试');
+                  Alert.alert(t('common.deleteFailed'), e.message || t('profile.networkRetry'));
                 }
               }},
             ]);
@@ -296,7 +299,7 @@ export default function ProfileScreen() {
             onPress={pickAvatar}
             activeOpacity={0.8}
             accessibilityRole="button"
-            accessibilityLabel="更换头像"
+            accessibilityLabel={t('profile.changeAvatarA11y')}
           >
             {profile.avatarUrl
               ? <Image source={{ uri: profile.avatarUrl }} style={s.avatarImage} />
@@ -311,16 +314,16 @@ export default function ProfileScreen() {
                 : null
             }
           </TouchableOpacity>
-          <Text style={s.nickname}>{profile.nickname || '铁记'}</Text>
+          <Text style={s.nickname}>{profile.nickname || t('profile.defaultNickname')}</Text>
           {profileSub ? <Text style={s.profileSub}>{profileSub}</Text> : null}
           <TouchableOpacity
             style={s.editBtn}
             onPress={openEdit}
             accessibilityRole="button"
-            accessibilityLabel="编辑个人信息"
+            accessibilityLabel={t('profile.editProfileA11y')}
           >
             <Ionicons name="pencil-outline" size={13} color={theme.accent} />
-            <Text style={s.editBtnText}>编辑资料</Text>
+            <Text style={s.editBtnText}>{t('profile.editProfile')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -329,17 +332,17 @@ export default function ProfileScreen() {
           <View style={s.highlightRow}>
             <View style={[s.hlCard, s.hlAccent]}>
               <View style={s.hlTopRow}>
-                <Text style={s.hlLabel}>🏅 总训练量</Text>
-                <Text style={s.hlUnit}>千克·次</Text>
+                <Text style={s.hlLabel}>{t('profile.totalVolume')}</Text>
+                <Text style={s.hlUnit}>{UNIT_VOLUME}</Text>
               </View>
               <Text style={s.hlNum} maxFontSizeMultiplier={1.2}>{totalVolume.toLocaleString()}</Text>
-              <Text style={s.hlSub}>{firstDate ? `自 ${firstDate} 起` : ''}</Text>
+              <Text style={s.hlSub}>{firstDate ? t('profile.since', { date: firstDate }) : ''}</Text>
             </View>
             {bestDay && (
               <View style={[s.hlCard, s.hlAccent]}>
                 <View style={s.hlTopRow}>
-                  <Text style={s.hlLabel}>🏆 单日最佳</Text>
-                  <Text style={s.hlUnit}>千克·次</Text>
+                  <Text style={s.hlLabel}>{t('profile.bestDay')}</Text>
+                  <Text style={s.hlUnit}>{UNIT_VOLUME}</Text>
                 </View>
                 <Text style={s.hlNum} maxFontSizeMultiplier={1.2}>{bestDay.vol.toLocaleString()}</Text>
                 <Text style={s.hlSub}>{[bestDayGymName, bestDay.date].filter(Boolean).join(' · ')}</Text>
@@ -353,24 +356,24 @@ export default function ProfileScreen() {
           <View style={s.statsRow}>
             <View style={s.statCell}>
               <Text style={s.statNum} maxFontSizeMultiplier={1.2}>{records.length}</Text>
-              <Text style={s.statLabel}>训练记录</Text>
+              <Text style={s.statLabel}>{t('common.statRecords')}</Text>
             </View>
             <View style={s.statDivV} />
             <View style={s.statCell}>
               <Text style={s.statNum} maxFontSizeMultiplier={1.2}>{trainDays}</Text>
-              <Text style={s.statLabel}>训练天数</Text>
+              <Text style={s.statLabel}>{t('common.statDays')}</Text>
             </View>
           </View>
           <View style={s.statDivH} />
           <View style={s.statsRow}>
             <View style={s.statCell}>
               <Text style={s.statNum} maxFontSizeMultiplier={1.2}>{gyms.length}</Text>
-              <Text style={s.statLabel}>健身房</Text>
+              <Text style={s.statLabel}>{t('profile.statGyms')}</Text>
             </View>
             <View style={s.statDivV} />
             <View style={s.statCell}>
               <Text style={s.statNum} maxFontSizeMultiplier={1.2}>{totalMachines}</Text>
-              <Text style={s.statLabel}>器械</Text>
+              <Text style={s.statLabel}>{t('profile.statMachines')}</Text>
             </View>
           </View>
         </View>
@@ -378,7 +381,7 @@ export default function ProfileScreen() {
         {/* ── 健身房排行 ── */}
         {gymStats.length > 0 && (
           <View style={s.card}>
-            <Text style={s.cardTitle}>健身房排行</Text>
+            <Text style={s.cardTitle}>{t('profile.gymRanking')}</Text>
             {gymStats.map(({ gym, vol, count }, idx) => (
               <View key={gym.id} style={[s.gymRow, idx === gymStats.length - 1 && { borderBottomWidth: 0 }]}>
                 <View style={[s.rankBadge, idx === 0 && s.rankBadgeGold]}>
@@ -386,7 +389,7 @@ export default function ProfileScreen() {
                 </View>
                 <View style={s.gymInfo}>
                   <Text style={s.gymName}>{gym.name}</Text>
-                  <Text style={s.gymSub}>{count} 条记录</Text>
+                  <Text style={s.gymSub}>{t('common.recordCount', { count })}</Text>
                 </View>
                 <Text style={s.gymVol}>{vol.toLocaleString()}</Text>
               </View>
@@ -396,9 +399,9 @@ export default function ProfileScreen() {
 
         {/* ── 外观 ── */}
         <View style={s.card}>
-          <Text style={s.cardTitle}>外观</Text>
+          <Text style={s.cardTitle}>{t('profile.appearance')}</Text>
 
-          <Text style={s.subLabel}>主题</Text>
+          <Text style={s.subLabel}>{t('profile.themeLabel')}</Text>
           <View style={s.themeRow}>
             {THEME_OPTIONS.map(opt => (
               <TouchableOpacity
@@ -406,7 +409,7 @@ export default function ProfileScreen() {
                 style={[s.themeBtn, mode === opt.value && s.themeBtnActive]}
                 onPress={() => setMode(opt.value)}
                 accessibilityRole="radio"
-                accessibilityLabel={opt.label}
+                accessibilityLabel={t(opt.labelKey)}
                 accessibilityState={{ checked: mode === opt.value }}
               >
                 <Ionicons
@@ -418,14 +421,14 @@ export default function ProfileScreen() {
             ))}
           </View>
 
-          <Text style={[s.subLabel, { marginTop: 16 }]}>配色方案</Text>
+          <Text style={[s.subLabel, { marginTop: 16 }]}>{t('profile.schemeLabel')}</Text>
           <View style={s.schemeRow}>
             {SCHEMES.map(key => (
               <TouchableOpacity
                 key={key}
                 onPress={() => setScheme(key)}
                 accessibilityRole="button"
-                accessibilityLabel={SCHEME_LABELS[key]}
+                accessibilityLabel={t(SCHEME_LABEL_KEYS[key])}
                 accessibilityState={{ selected: scheme === key }}
                 style={[
                   s.schemeDot,
@@ -438,15 +441,15 @@ export default function ProfileScreen() {
         </View>
 
         {/* ── 账号：未登录时是可选的云同步入口，不挡任何功能 ── */}
-        <Text style={s.sectionLabel}>账号</Text>
+        <Text style={s.sectionLabel}>{t('profile.account')}</Text>
         {account ? (
           <>
             <View style={s.accountCard}>
               <Ionicons name="cloud-done-outline" size={20} color={theme.accent} />
               <View style={{ flex: 1, minWidth: 0 }}>
-                <Text style={s.accountTitle}>已开启云端同步</Text>
+                <Text style={s.accountTitle}>{t('profile.cloudOn')}</Text>
                 <Text style={s.accountDesc} numberOfLines={1}>
-                  {account.email || '已登录'}
+                  {account.email || t('profile.signedIn')}
                 </Text>
               </View>
             </View>
@@ -454,15 +457,15 @@ export default function ProfileScreen() {
             <TouchableOpacity
               style={s.logoutBtn}
               onPress={() => {
-                Alert.alert('退出登录', '退出后仍可继续使用，新记录会存在这台设备上。', [
-                  { text: '取消', style: 'cancel' },
-                  { text: '退出', style: 'destructive', onPress: () => supabase.auth.signOut() },
+                Alert.alert(t('profile.signOutTitle'), t('profile.signOutMessage'), [
+                  { text: t('common.cancel'), style: 'cancel' },
+                  { text: t('profile.signOut'), style: 'destructive', onPress: () => supabase.auth.signOut() },
                 ]);
               }}
               accessibilityRole="button"
-              accessibilityLabel="退出登录"
+              accessibilityLabel={t('profile.signOutTitle')}
             >
-              <Text style={s.logoutBtnText}>退出登录</Text>
+              <Text style={s.logoutBtnText}>{t('profile.signOutTitle')}</Text>
             </TouchableOpacity>
           </>
         ) : (
@@ -470,9 +473,9 @@ export default function ProfileScreen() {
             <View style={s.accountCard}>
               <Ionicons name="phone-portrait-outline" size={20} color={theme.textMuted} />
               <View style={{ flex: 1, minWidth: 0 }}>
-                <Text style={s.accountTitle}>本机模式</Text>
+                <Text style={s.accountTitle}>{t('profile.localMode')}</Text>
                 <Text style={s.accountDesc}>
-                  训练记录保存在这台设备上，不需要账号
+                  {t('profile.localModeDesc')}
                 </Text>
               </View>
             </View>
@@ -481,11 +484,11 @@ export default function ProfileScreen() {
               style={s.loginBtn}
               onPress={showAuth}
               accessibilityRole="button"
-              accessibilityLabel="登录或注册以开启云端同步"
+              accessibilityLabel={t('profile.loginA11y')}
             >
-              <Text style={s.loginBtnText}>登录 / 注册，开启云端同步</Text>
+              <Text style={s.loginBtnText}>{t('profile.loginBtn')}</Text>
             </TouchableOpacity>
-            <Text style={s.loginHint}>登录后，这台设备上已有的记录会自动搬到云端</Text>
+            <Text style={s.loginHint}>{t('profile.loginHint')}</Text>
           </>
         )}
 
@@ -494,13 +497,13 @@ export default function ProfileScreen() {
           style={[s.dangerBtn, !account && s.dangerBtnLast]}
           onPress={handleClearAllData}
           accessibilityRole="button"
-          accessibilityLabel="清除所有数据"
+          accessibilityLabel={t('profile.clearTitle')}
         >
-          <Text style={s.dangerBtnLabel}>清除所有数据</Text>
+          <Text style={s.dangerBtnLabel}>{t('profile.clearTitle')}</Text>
           <Text style={s.dangerBtnDesc}>
             {account
-              ? '删除全部健身房、器械和训练记录，账号保留'
-              : '删除这台设备上的全部健身房、器械和训练记录'}
+              ? t('profile.clearDescSignedIn')
+              : t('profile.clearDescLocal')}
           </Text>
         </TouchableOpacity>
 
@@ -509,10 +512,10 @@ export default function ProfileScreen() {
             style={[s.dangerBtn, s.dangerBtnLast]}
             onPress={handleDeleteAccount}
             accessibilityRole="button"
-            accessibilityLabel="删除账号"
+            accessibilityLabel={t('profile.deleteAccountTitle')}
           >
-            <Text style={s.dangerBtnLabel}>删除账号</Text>
-            <Text style={s.dangerBtnDesc}>连同账号、个人资料和训练记录一并永久删除</Text>
+            <Text style={s.dangerBtnLabel}>{t('profile.deleteAccountTitle')}</Text>
+            <Text style={s.dangerBtnDesc}>{t('profile.deleteAccountDesc')}</Text>
           </TouchableOpacity>
         )}
 
@@ -528,12 +531,12 @@ export default function ProfileScreen() {
 
               <View style={s.modalTitleRow}>
                 <View style={{ width: 44 }} />
-                <Text style={s.modalTitle}>编辑个人信息</Text>
+                <Text style={s.modalTitle}>{t('profile.editModalTitle')}</Text>
                 <TouchableOpacity
                   style={s.modalCloseBtn}
                   onPress={() => setEditVisible(false)}
                   accessibilityRole="button"
-                  accessibilityLabel="关闭"
+                  accessibilityLabel={t('common.close')}
                 >
                   <Ionicons name="close" size={18} color={theme.textMuted} />
                 </TouchableOpacity>
@@ -548,9 +551,9 @@ export default function ProfileScreen() {
                     onPress={() => toggleField('nickname')}
                     activeOpacity={0.7}
                   >
-                    <Text style={s.fieldRowLabel}>昵称</Text>
+                    <Text style={s.fieldRowLabel}>{t('profile.fieldNickname')}</Text>
                     <Text style={[s.fieldRowValue, !editData.nickname && s.fieldRowPlaceholder]}>
-                      {editData.nickname || '未填写'}
+                      {editData.nickname || t('profile.notFilled')}
                     </Text>
                   </TouchableOpacity>
                   {activeField === 'nickname' && (
@@ -559,7 +562,7 @@ export default function ProfileScreen() {
                         style={s.fieldInput}
                         value={editData.nickname || ''}
                         onChangeText={v => setEditData(d => ({ ...d, nickname: v }))}
-                        placeholder="请输入昵称"
+                        placeholder={t('profile.nicknamePlaceholder')}
                         placeholderTextColor={theme.textFaint}
                         returnKeyType="done"
                         autoFocus
@@ -576,7 +579,7 @@ export default function ProfileScreen() {
                     onPress={() => toggleField('gender')}
                     activeOpacity={0.7}
                   >
-                    <Text style={s.fieldRowLabel}>性别</Text>
+                    <Text style={s.fieldRowLabel}>{t('profile.fieldGender')}</Text>
                     <View style={s.fieldRowRight}>
                       <Text style={s.fieldRowValue}>{editData.gender || '男'}</Text>
                       <Ionicons name={activeField === 'gender' ? 'chevron-up' : 'chevron-down'} size={14} color={theme.textFaint} />
@@ -600,10 +603,10 @@ export default function ProfileScreen() {
                     onPress={() => toggleField('birthDate')}
                     activeOpacity={0.7}
                   >
-                    <Text style={s.fieldRowLabel}>出生日期</Text>
+                    <Text style={s.fieldRowLabel}>{t('profile.fieldBirthDate')}</Text>
                     <View style={s.fieldRowRight}>
                       <Text style={[s.fieldRowValue, !editData.birthYear && s.fieldRowPlaceholder]}>
-                        {editData.birthYear ? `${editData.birthYear}-${editData.birthMonth}-${editData.birthDay}` : '未填写'}
+                        {editData.birthYear ? `${editData.birthYear}-${editData.birthMonth}-${editData.birthDay}` : t('profile.notFilled')}
                       </Text>
                       <Ionicons name={activeField === 'birthDate' ? 'chevron-up' : 'chevron-down'} size={14} color={theme.textFaint} />
                     </View>
@@ -639,9 +642,9 @@ export default function ProfileScreen() {
                     onPress={() => toggleField('height')}
                     activeOpacity={0.7}
                   >
-                    <Text style={s.fieldRowLabel}>身高</Text>
+                    <Text style={s.fieldRowLabel}>{t('profile.fieldHeight')}</Text>
                     <View style={s.fieldRowRight}>
-                      <Text style={s.fieldRowValue}>{editData.height || '170'} 厘米</Text>
+                      <Text style={s.fieldRowValue}>{editData.height || '170'} {UNIT_HEIGHT}</Text>
                       <Ionicons name={activeField === 'height' ? 'chevron-up' : 'chevron-down'} size={14} color={theme.textFaint} />
                     </View>
                   </TouchableOpacity>
@@ -663,9 +666,9 @@ export default function ProfileScreen() {
                     onPress={() => toggleField('weight')}
                     activeOpacity={0.7}
                   >
-                    <Text style={s.fieldRowLabel}>体重</Text>
+                    <Text style={s.fieldRowLabel}>{t('profile.fieldWeight')}</Text>
                     <View style={s.fieldRowRight}>
-                      <Text style={s.fieldRowValue}>{editData.weight || '70'} 千克</Text>
+                      <Text style={s.fieldRowValue}>{editData.weight || '70'} {UNIT_WEIGHT}</Text>
                       <Ionicons name={activeField === 'weight' ? 'chevron-up' : 'chevron-down'} size={14} color={theme.textFaint} />
                     </View>
                   </TouchableOpacity>
@@ -687,10 +690,10 @@ export default function ProfileScreen() {
                     onPress={() => toggleField('city')}
                     activeOpacity={0.7}
                   >
-                    <Text style={s.fieldRowLabel}>居住城市</Text>
+                    <Text style={s.fieldRowLabel}>{t('profile.fieldCity')}</Text>
                     <View style={s.fieldRowRight}>
                       <Text style={[s.fieldRowValue, !editData.city && s.fieldRowPlaceholder]}>
-                        {editData.city || '未选择'}
+                        {editData.city || t('profile.notSelected')}
                       </Text>
                       <Ionicons name={activeField === 'city' ? 'chevron-up' : 'chevron-down'} size={14} color={theme.textFaint} />
                     </View>
@@ -698,7 +701,7 @@ export default function ProfileScreen() {
                   {activeField === 'city' && (
                     <View style={[s.fieldExpand, { flexDirection: 'row' }]}>
                       <View style={{ flex: 5 }}>
-                        <Text style={s.pickerColLabel}>省份</Text>
+                        <Text style={s.pickerColLabel}>{t('profile.provinceCol')}</Text>
                         <WheelPicker
                           items={PROVINCE_NAMES}
                           value={cityProvince}
@@ -710,7 +713,7 @@ export default function ProfileScreen() {
                       </View>
                       <View style={s.pickerDivider} />
                       <View style={{ flex: 5 }}>
-                        <Text style={s.pickerColLabel}>城市</Text>
+                        <Text style={s.pickerColLabel}>{t('profile.cityCol')}</Text>
                         <WheelPicker
                           items={cityList}
                           value={editData.city || cityList[0]}
@@ -727,17 +730,17 @@ export default function ProfileScreen() {
                 style={s.saveBtn}
                 onPress={saveEdit}
                 accessibilityRole="button"
-                accessibilityLabel="保存"
+                accessibilityLabel={t('common.save')}
               >
-                <Text style={s.saveBtnText}>保存</Text>
+                <Text style={s.saveBtnText}>{t('common.save')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={s.cancelBtn}
                 onPress={() => setEditVisible(false)}
                 accessibilityRole="button"
-                accessibilityLabel="取消"
+                accessibilityLabel={t('common.cancel')}
               >
-                <Text style={s.cancelBtnText}>取消</Text>
+                <Text style={s.cancelBtnText}>{t('common.cancel')}</Text>
               </TouchableOpacity>
             </View>
           </KeyboardAvoidingView>

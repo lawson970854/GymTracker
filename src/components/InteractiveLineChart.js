@@ -5,6 +5,8 @@ import Svg, {
   Text as SvgText, Defs, LinearGradient, Stop,
 } from 'react-native-svg';
 import { useTheme } from '../ThemeContext';
+import { useTranslation } from 'react-i18next';
+import { UNIT_VOLUME } from '../constants/units';
 
 /**
  * InteractiveLineChart
@@ -28,6 +30,7 @@ export default function InteractiveLineChart({
   tooltipExtra = null,
   highlightIndex = null,
 }) {
+  const { t } = useTranslation();
   const { theme, isDark } = useTheme();
   const lineColor = color || theme.accent;
 
@@ -99,7 +102,7 @@ export default function InteractiveLineChart({
   return (
     <View
       {...panResponder.panHandlers}
-      accessibilityLabel="训练量趋势图，可滑动查看每日数据"
+      accessibilityLabel={t('chart.volumeTrendA11y')}
       accessibilityRole="image"
     >
       <Svg width={width} height={height}>
@@ -177,7 +180,7 @@ export default function InteractiveLineChart({
                 x={tBx + 10} y={tBy + (hasExtra ? 31 : 33)}
                 textAnchor="start" fontSize={13} fill="#4DEBA5" fontWeight="bold"
               >
-                {data[activeIdx].toLocaleString()} 千克·次
+                {data[activeIdx].toLocaleString()} {UNIT_VOLUME}
               </SvgText>
               {hasExtra && (
                 <SvgText
