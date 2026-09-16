@@ -10,9 +10,6 @@
     "ios": {
       "bundleIdentifier": "com.frankwang.gymtracker",
       "usesAppleSignIn": true,
-      "runtimeVersion": {
-        "policy": "appVersion"
-      },
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "CFBundleDevelopmentRegion": "zh-Hans",
@@ -85,7 +82,7 @@
       }
     },
     "runtimeVersion": {
-      "policy": "appVersion"
+      "policy": "fingerprint"
     }
   }
 }
