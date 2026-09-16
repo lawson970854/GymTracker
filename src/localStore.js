@@ -4,6 +4,9 @@
 // 版本保持一致，storage.js 根据有没有登录会话决定走哪一套。
 import * as FileSystem from 'expo-file-system/legacy';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+// 本机 ID 也用真 UUID：和云端同一套格式，登录后搬运时不必再区分两种 ID 形态。
+// 没有任何代码依赖旧的 local_ 前缀（改动前已全局确认）。
+import { newId } from './ids';
 import i18n from './i18n';
 
 const DATA_KEY = '@gymtracker:localData';
@@ -13,10 +16,6 @@ const EMPTY = { gyms: [], records: [], categories: [] };
 const DEFAULT_PROFILE = {
   nickname: '', gender: '', birthDate: '', height: '', weight: '', city: '', avatarUrl: '',
 };
-
-function newId() {
-  return `local_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-}
 
 export async function readLocalData() {
   try {
@@ -57,9 +56,9 @@ export async function hasLocalData() {
 }
 
 // ── 健身房 ────────────────────────────────────────────
-export function addGym(name) {
+export function addGym(name, id) {
   return mutate(data => {
-    const gym = { id: newId(), name, machines: [] };
+    const gym = { id: id || newId(), name, machines: [] };
     data.gyms.push(gym);
     return gym;
   });
@@ -83,11 +82,11 @@ export function updateGymName(gymId, name) {
 }
 
 // ── 器械 ──────────────────────────────────────────────
-export function addMachine(gymId, name, categoryId) {
+export function addMachine(gymId, name, categoryId, id) {
   return mutate(data => {
     const gym = data.gyms.find(g => g.id === gymId);
     if (!gym) throw new Error(i18n.t('errors.gymNotFound'));
-    const machine = { id: newId(), name };
+    const machine = { id: id || newId(), name };
     gym.machines = [...(gym.machines || []), machine];
     if (categoryId) {
       const cat = data.categories.find(c => c.id === categoryId);
@@ -121,7 +120,7 @@ export function updateMachineName(machineId, name) {
 // ── 记录 ──────────────────────────────────────────────
 export function addRecord(record) {
   return mutate(data => {
-    const saved = { ...record, id: newId() };
+    const saved = { ...record, id: record.id || newId() };
     data.records.push(saved);
     return saved;
   });
@@ -141,9 +140,9 @@ export function deleteRecord(recordId) {
 }
 
 // ── 分类 ──────────────────────────────────────────────
-export function addCategory(name) {
+export function addCategory(name, id) {
   return mutate(data => {
-    const cat = { id: newId(), name, items: [] };
+    const cat = { id: id || newId(), name, items: [] };
     data.categories.push(cat);
     return cat;
   });

@@ -57,11 +57,13 @@ export async function fetchGymData() {
 }
 
 // ── 写操作（各屏幕 useMutation 使用）─────────────────
-export async function addGym(name) {
+// id 由调用方生成并传入（见 src/ids.js 的说明）。不传则退回服务端默认值，
+// 但这样乐观更新就拿不到最终 ID，正常路径都应该传。
+export async function addGym(name, id) {
   const userId = await getUserId();
-  if (!userId) return local.addGym(name);
+  if (!userId) return local.addGym(name, id);
   const { data, error } = await supabase.from('gyms')
-    .insert({ name, user_id: userId }).select().single();
+    .insert({ ...(id ? { id } : {}), name, user_id: userId }).select().single();
   if (error) throw error;
   return { id: data.id, name: data.name, machines: [] };
 }
@@ -80,11 +82,11 @@ export async function updateGymName(gymId, name) {
   if (error) throw error;
 }
 
-export async function addMachine(gymId, name, categoryId) {
+export async function addMachine(gymId, name, categoryId, id) {
   const userId = await getUserId();
-  if (!userId) return local.addMachine(gymId, name, categoryId);
+  if (!userId) return local.addMachine(gymId, name, categoryId, id);
   const { data, error } = await supabase.from('machines')
-    .insert({ gym_id: gymId, name, user_id: userId }).select().single();
+    .insert({ ...(id ? { id } : {}), gym_id: gymId, name, user_id: userId }).select().single();
   if (error) throw error;
   // 如果指定了分类，自动关联到该分类
   if (categoryId) {
@@ -113,6 +115,7 @@ export async function addRecord(record) {
   const userId = await getUserId();
   if (!userId) return local.addRecord(record);
   const { data, error } = await supabase.from('records').insert({
+    ...(record.id ? { id: record.id } : {}),
     user_id: userId,
     gym_id: record.gymId,
     machine_id: record.machineId,
@@ -144,11 +147,11 @@ export async function deleteRecord(recordId) {
   if (error) throw error;
 }
 
-export async function addCategory(name) {
+export async function addCategory(name, id) {
   const userId = await getUserId();
-  if (!userId) return local.addCategory(name);
+  if (!userId) return local.addCategory(name, id);
   const { data, error } = await supabase.from('categories')
-    .insert({ name, user_id: userId }).select().single();
+    .insert({ ...(id ? { id } : {}), name, user_id: userId }).select().single();
   if (error) throw error;
   return { id: data.id, name: data.name, items: [] };
 }

@@ -15,6 +15,7 @@ import TrophyModal from '../components/TrophyModal';
 import InteractiveLineChart from '../components/InteractiveLineChart';
 import { useTheme, RADIUS, FONTS } from '../ThemeContext';
 import { useTranslation } from 'react-i18next';
+import { newId } from '../ids';
 import { UNIT_WEIGHT, UNIT_VOLUME, formatWeight, formatSetLine, formatVolume } from '../constants/units';
 
 const W = Dimensions.get('window').width;
@@ -143,25 +144,28 @@ export default function MachineScreen({ route }) {
 
   const addMutation = useMutation({
     mutationFn: dbAddRecord,
+    // vars.id 由调用方生成，乐观插入和服务端写入用的是同一个 ID，
+    // 所以成功后不需要再做 ID 替换。
     onMutate: async (vars) => {
       await qc.cancelQueries({ queryKey: GYM_DATA_KEY });
       const prev = qc.getQueryData(GYM_DATA_KEY);
-      const tempId = 'temp_' + Date.now();
-      const tempRec = { id: tempId, ...vars };
       qc.setQueryData(GYM_DATA_KEY, old => ({
         ...old,
-        records: [...(old?.records || []), tempRec],
+        records: [...(old?.records || []), { ...vars }],
       }));
-      return { prev, tempId };
+      return { prev };
     },
-    onSuccess: (newRec, vars, ctx) => {
+    onSuccess: (newRec) => {
       qc.setQueryData(GYM_DATA_KEY, old => ({
         ...old,
-        records: (old?.records || []).map(r => r.id === ctx.tempId ? newRec : r),
+        records: (old?.records || []).map(r => r.id === newRec.id ? newRec : r),
       }));
     },
     onError: (err, vars, ctx) => {
       if (ctx?.prev) qc.setQueryData(GYM_DATA_KEY, ctx.prev);
+      // 用户看友好文案，真实错误留在 console。2026-09-15 那次事故就是因为错误被
+      // 完全吞掉，任何失败都显示成「请检查网络连接」，排查时毫无线索。
+      console.error('[addRecord]', err);
       Alert.alert(t('common.saveFailed'), t('common.networkError'));
     },
   });
@@ -179,6 +183,7 @@ export default function MachineScreen({ route }) {
     },
     onError: (err, vars, ctx) => {
       if (ctx?.prev) qc.setQueryData(GYM_DATA_KEY, ctx.prev);
+      console.error('[updateRecord]', err);
       Alert.alert(t('common.saveFailed'), t('common.networkError'));
     },
     onSettled: () => qc.invalidateQueries({ queryKey: GYM_DATA_KEY }),
@@ -210,7 +215,7 @@ export default function MachineScreen({ route }) {
     if (volume > maxVol) setTrophy('gold');
     setDate(today());
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    addMutation.mutate({ gymId, machineId, date, weight: w, sets: [...sets], volume });
+    addMutation.mutate({ id: newId(), gymId, machineId, date, weight: w, sets: [...sets], volume });
   };
 
   const openEdit = (rec) => {

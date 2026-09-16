@@ -13,6 +13,7 @@ import { GYM_DATA_KEY } from '../queryClient';
 import { useTheme, RADIUS, FONTS } from '../ThemeContext';
 import RenameModal from '../components/RenameModal';
 import { useTranslation } from 'react-i18next';
+import { newId } from '../ids';
 
 export default function HomeScreen({ navigation }) {
   const { t } = useTranslation();
@@ -28,13 +29,13 @@ export default function HomeScreen({ navigation }) {
   const [renamingGym, setRenamingGym] = useState(null);
 
   const addMutation = useMutation({
-    mutationFn: dbAddGym,
-    onMutate: async (name) => {
+    mutationFn: ({ id, name }) => dbAddGym(name, id),
+    onMutate: async ({ id, name }) => {
       await qc.cancelQueries({ queryKey: GYM_DATA_KEY });
       const prev = qc.getQueryData(GYM_DATA_KEY);
       qc.setQueryData(GYM_DATA_KEY, old => ({
         ...old,
-        gyms: [...(old?.gyms || []), { id: 'temp_' + Date.now(), name, machines: [] }],
+        gyms: [...(old?.gyms || []), { id, name, machines: [] }],
       }));
       return { prev };
     },
@@ -87,7 +88,7 @@ export default function HomeScreen({ navigation }) {
     setNewName('');
     setAdding(false);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    addMutation.mutate(name);
+    addMutation.mutate({ id: newId(), name });
   };
 
   const deleteGym = (gym) => {

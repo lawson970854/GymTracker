@@ -13,6 +13,7 @@ import { GYM_DATA_KEY } from '../queryClient';
 import { useTheme, RADIUS, FONTS } from '../ThemeContext';
 import RenameModal from '../components/RenameModal';
 import { useTranslation } from 'react-i18next';
+import { newId } from '../ids';
 import { formatVolume } from '../constants/units';
 
 export default function GymScreen({ navigation, route }) {
@@ -39,15 +40,15 @@ export default function GymScreen({ navigation, route }) {
   const selectedCategory = categories.find(c => c.id === selectedCategoryId);
 
   const addMutation = useMutation({
-    mutationFn: ({ name, categoryId }) => dbAddMachine(gymId, name, categoryId),
-    onMutate: async ({ name }) => {
+    mutationFn: ({ id, name, categoryId }) => dbAddMachine(gymId, name, categoryId, id),
+    onMutate: async ({ id, name }) => {
       await qc.cancelQueries({ queryKey: GYM_DATA_KEY });
       const prev = qc.getQueryData(GYM_DATA_KEY);
       qc.setQueryData(GYM_DATA_KEY, old => ({
         ...old,
         gyms: (old?.gyms || []).map(g =>
           g.id === gymId
-            ? { ...g, machines: [...(g.machines || []), { id: 'temp_' + Date.now(), name }] }
+            ? { ...g, machines: [...(g.machines || []), { id, name }] }
             : g
         ),
       }));
@@ -124,7 +125,7 @@ export default function GymScreen({ navigation, route }) {
     setAdding(false);
     setSelectedCategoryId(null);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    addMutation.mutate({ name, categoryId });
+    addMutation.mutate({ id: newId(), name, categoryId });
   };
 
   const cancelAdd = () => {

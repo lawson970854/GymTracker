@@ -15,7 +15,8 @@
       },
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "CFBundleDevelopmentRegion": "zh-Hans"
+        "CFBundleDevelopmentRegion": "zh-Hans",
+        "NSLocalNetworkUsageDescription": "开发调试时需要访问局域网，以便从电脑上的开发服务器加载代码。正式使用不需要此权限。"
       }
     },
     "android": {

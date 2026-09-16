@@ -13,6 +13,7 @@ import { GYM_DATA_KEY } from '../queryClient';
 import { useTheme, RADIUS, FONTS } from '../ThemeContext';
 import RenameModal from '../components/RenameModal';
 import { useTranslation } from 'react-i18next';
+import { newId } from '../ids';
 
 export default function CategoryListScreen({ navigation }) {
   const { t } = useTranslation();
@@ -28,13 +29,13 @@ export default function CategoryListScreen({ navigation }) {
   const [renamingCat, setRenamingCat] = useState(null);
 
   const addMutation = useMutation({
-    mutationFn: dbAddCategory,
-    onMutate: async (name) => {
+    mutationFn: ({ id, name }) => dbAddCategory(name, id),
+    onMutate: async ({ id, name }) => {
       await qc.cancelQueries({ queryKey: GYM_DATA_KEY });
       const prev = qc.getQueryData(GYM_DATA_KEY);
       qc.setQueryData(GYM_DATA_KEY, old => ({
         ...old,
-        categories: [...(old?.categories || []), { id: 'temp_' + Date.now(), name, items: [] }],
+        categories: [...(old?.categories || []), { id, name, items: [] }],
       }));
       return { prev };
     },
@@ -87,7 +88,7 @@ export default function CategoryListScreen({ navigation }) {
     setNewName('');
     setAdding(false);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    addMutation.mutate(name);
+    addMutation.mutate({ id: newId(), name });
   };
 
   const deleteCategory = (cat) => {
