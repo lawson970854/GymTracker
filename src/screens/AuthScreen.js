@@ -140,6 +140,17 @@ export default function AuthScreen({ onSkip }) {
 
   return (
     <SafeAreaView style={s.safe}>
+      {onSkip && (
+        <TouchableOpacity
+          style={s.closeBtn}
+          onPress={onSkip}
+          accessibilityRole="button"
+          accessibilityLabel={tr('common.close')}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Ionicons name="close" size={26} color={t.textMuted} />
+        </TouchableOpacity>
+      )}
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -381,6 +392,11 @@ export default function AuthScreen({ onSkip }) {
 
 const makeStyles = (t) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: t.bg },
+  // 绝对定位，压在 ScrollView 上层，滚动时不跟着走
+  closeBtn: {
+    position: 'absolute', top: 8, left: 14, zIndex: 10,
+    width: 40, height: 40, alignItems: 'center', justifyContent: 'center',
+  },
   scrollContent: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 34, paddingVertical: 40 },
   // 阴影和圆角拆到两层：iOS 上同一个 Image 同时设圆角裁剪和阴影会互相冲突
   logoShadow: {

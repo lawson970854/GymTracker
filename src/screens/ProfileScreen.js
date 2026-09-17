@@ -11,7 +11,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { fetchGymData, loadProfile, saveProfile, uploadAvatar, clearAllData, deleteAccount } from '../storage';
 import { GYM_DATA_KEY } from '../queryClient';
 import { supabase } from '../supabase';
-import { showAuth } from '../authGate';
+import { useNavigation } from '@react-navigation/native';
 import { useTheme, RADIUS, FONTS, SCHEMES, SCHEME_LABEL_KEYS } from '../ThemeContext';
 import { REGIONS, PROVINCE_NAMES, findProvinceByCity, getCitiesForProvince } from '../constants/regions';
 import { useTranslation } from 'react-i18next';
@@ -99,6 +99,7 @@ const wp = StyleSheet.create({
 
 export default function ProfileScreen() {
   const { t } = useTranslation();
+  const navigation = useNavigation();
   const { theme, mode, setMode, isDark } = useTheme();
   const s = useMemo(() => makeStyles(theme, isDark), [theme, isDark]);
   const insets = useSafeAreaInsets();
@@ -482,7 +483,7 @@ export default function ProfileScreen() {
 
             <TouchableOpacity
               style={s.loginBtn}
-              onPress={showAuth}
+              onPress={() => navigation.navigate('Auth')}
               accessibilityRole="button"
               accessibilityLabel={t('profile.loginA11y')}
             >

@@ -11,13 +11,12 @@ import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client
 import { queryClient, asyncStoragePersister } from './src/queryClient';
 import { supabase } from './src/supabase';
 import { hasLocalData, migrateLocalDataToCloud } from './src/storage';
-import { hideAuth, showAuth, isAuthVisible, subscribeAuthVisible } from './src/authGate';
 import AuthScreen from './src/screens/AuthScreen';
 import WelcomeScreen from './src/screens/WelcomeScreen';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 SplashScreen.preventAutoHideAsync();
-import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme, useNavigationContainerRef } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
@@ -127,8 +126,10 @@ function MainTabs() {
   );
 }
 
+const RootStack = createStackNavigator();
+
 // NavigationContainer 内部调用 useTheme，需在 ThemeProvider 之内
-function AppContent() {
+function AppContent({ navRef, openAuthOnReady }) {
   const { theme, isDark } = useTheme();
   const navTheme = {
     ...DefaultTheme,
@@ -144,8 +145,21 @@ function AppContent() {
     },
   };
   return (
-    <NavigationContainer theme={navTheme}>
-      <MainTabs />
+    <NavigationContainer
+      ref={navRef}
+      theme={navTheme}
+      onReady={() => {
+        // 欢迎页选了「登录」时，主界面挂载后立刻把登录页盖上来。
+        // 这样返回栈里下面压着主界面，关闭 modal 就自然回到它。
+        if (openAuthOnReady) navRef.navigate('Auth');
+      }}
+    >
+      <RootStack.Navigator screenOptions={{ headerShown: false }}>
+        <RootStack.Screen name="Main" component={MainTabs} />
+        <RootStack.Screen name="Auth" options={{ presentation: 'modal' }}>
+          {({ navigation }) => <AuthScreen onSkip={() => navigation.goBack()} />}
+        </RootStack.Screen>
+      </RootStack.Navigator>
     </NavigationContainer>
   );
 }
@@ -172,10 +186,12 @@ function MigratingOverlay() {
 const WELCOME_SEEN_KEY = '@gymtracker:welcomeSeen';
 
 function App() {
+  const navRef = useNavigationContainerRef();
   const [session, setSession] = useState(undefined);
+  // 欢迎页选了「登录」：导航器还没挂载，先记下来，onReady 时再打开登录页
+  const [openAuthOnReady, setOpenAuthOnReady] = useState(false);
   // undefined = 还没读出来，和「读出来是 false」要区分，否则会闪一下欢迎页
   const [welcomeSeen, setWelcomeSeen] = useState(undefined);
-  const [authVisible, setAuthVisible] = useState(isAuthVisible);
   const [migrating, setMigrating] = useState(false);
   const lastUserIdRef = useRef(undefined);
   const [fontsLoaded] = useFonts({
@@ -185,8 +201,6 @@ function App() {
 
   // OTA 更新交给 expo-updates 默认行为处理：启动时静默后台下载，下次打开自动生效，
   // 不在启动时强制重载，避免每次打开看到“刷新一下”。
-
-  useEffect(() => subscribeAuthVisible(setAuthVisible), []);
 
   useEffect(() => {
     AsyncStorage.getItem(WELCOME_SEEN_KEY)
@@ -234,7 +248,11 @@ function App() {
       setSession(session);
 
       if (userId) {
-        hideAuth();
+        // 登录成功：如果此刻正停在登录页上，把它关掉回到主界面。
+        // 只在确实停在 Auth 上时才 goBack，避免误弹掉别的页面。
+        if (navRef.isReady() && navRef.getCurrentRoute()?.name === 'Auth') {
+          navRef.goBack();
+        }
         // 未登录期间记在本机的数据，登录时搬到云端，不能让用户以为数据没了。
         // onAuthStateChange 回调里不能直接调 supabase.auth.*（会和内部的锁互等），
         // 所以推到下一个事件循环再跑。
@@ -248,11 +266,8 @@ function App() {
   if (session === undefined || welcomeSeen === undefined || !fontsLoaded) return null;
 
   // 首次启动先问一次数据存哪；已登录的用户不问（他们显然已经选过云端）。
+  // 欢迎页是一次性闸门，没有「上一页」可回，所以留在导航器外面。
   const showWelcome = !session && !welcomeSeen;
-
-  // 没有账号也能用：默认直接进主界面，数据存在本机；
-  // 只有用户主动点「登录 / 注册」才显示登录页。
-  const showAuthScreen = !session && authVisible;
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -261,13 +276,11 @@ function App() {
           <ThemeProvider>
             {showWelcome ? (
               <WelcomeScreen
-                onChooseCloud={() => { markWelcomeSeen(); showAuth(); }}
+                onChooseCloud={() => { setOpenAuthOnReady(true); markWelcomeSeen(); }}
                 onChooseLocal={markWelcomeSeen}
               />
-            ) : showAuthScreen ? (
-              <AuthScreen onSkip={hideAuth} />
             ) : (
-              <AppContent />
+              <AppContent navRef={navRef} openAuthOnReady={openAuthOnReady} />
             )}
             {migrating && <MigratingOverlay />}
           </ThemeProvider>
