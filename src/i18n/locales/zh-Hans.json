@@ -160,7 +160,6 @@
     "verifiedPrompt": "已经验证好了？",
     "goLoginInline": " 去登录",
     "goSignupInline": " 去注册",
-    "skip": "稍后再说，先不登录使用",
     "welcomeBack": "欢迎回来",
     "createAccount": "创建你的账号",
     "subtitleLogin": "训练记录同步到云端，换设备接着用",
@@ -218,7 +217,7 @@
     "clearedTitle": "已清除",
     "clearedMessage": "所有训练数据已删除。",
     "clearFailed": "清除失败",
-    "deleteAccountTitle": "删除账号",
+    "deleteAccountTitle": "永久删除账号",
     "deleteAccountMessage": "账号和全部数据将被永久删除，无法恢复。",
     "deleteAccountConfirmTitle": "最后确认",
     "deleteAccountConfirmMessage": "删除后需要重新注册才能使用，确定删除账号吗？",
@@ -248,9 +247,6 @@
     "localModeDesc": "记录只存在这台设备上",
     "loginA11y": "登录或注册以开启云端同步",
     "loginBtn": "登录，开启云端同步",
-    "clearDescSignedIn": "删除全部训练数据，账号保留",
-    "clearDescLocal": "删除这台设备上的全部训练数据",
-    "deleteAccountDesc": "账号和全部数据永久删除",
     "editModalTitle": "编辑个人信息",
     "notFilled": "未填写",
     "notSelected": "未选择",
@@ -262,7 +258,8 @@
     "fieldWeight": "体重",
     "fieldCity": "居住城市",
     "provinceCol": "省份",
-    "cityCol": "城市"
+    "cityCol": "城市",
+    "appleSignIn": "通过 Apple 登录"
   },
   "theme": {
     "emerald": "翠绿",

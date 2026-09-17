@@ -204,16 +204,6 @@ export default function AuthScreen({ onSkip }) {
                 </Text>
               </TouchableOpacity>
 
-              {onSkip && (
-                <TouchableOpacity
-                  onPress={onSkip}
-                  accessibilityRole="button"
-                  accessibilityLabel={tr('auth.skip')}
-                  style={s.skipRow}
-                >
-                  <Text style={s.skipText}>{tr('auth.skip')}</Text>
-                </TouchableOpacity>
-              )}
             </>
           ) : (
           <>
@@ -372,16 +362,6 @@ export default function AuthScreen({ onSkip }) {
             </Text>
           </TouchableOpacity>
 
-          {onSkip && (
-            <TouchableOpacity
-              onPress={onSkip}
-              accessibilityRole="button"
-              accessibilityLabel={tr('auth.skip')}
-              style={s.skipRow}
-            >
-              <Text style={s.skipText}>{tr('auth.skip')}</Text>
-            </TouchableOpacity>
-          )}
           </>
           )}
         </ScrollView>
@@ -472,8 +452,8 @@ const makeStyles = (t) => StyleSheet.create({
   stepLine: { fontSize: 14, color: t.textPrimary, fontFamily: FONTS.ui, lineHeight: 20 },
   hint: { fontSize: 13, color: t.textMuted, fontFamily: FONTS.ui, marginTop: 14, textAlign: 'center' },
   switchRow: { marginTop: 22, alignItems: 'center' },
-  skipRow: { marginTop: 18, alignItems: 'center', paddingVertical: 8 },
-  skipText: { fontSize: 14, color: t.textMuted, fontFamily: FONTS.uiBold },
+  // 主题色 = 可点击。全 App 的链接（忘记密码、去注册、编辑资料）都是这个色，
+  // 这里原本用的是正文色 textMuted，是唯一一个「可点却不像可点」的破例。
   switchText: { fontSize: 14, color: t.textMuted, fontFamily: FONTS.ui },
   switchLink: { color: t.accentInk, fontFamily: FONTS.uiBold },
 });

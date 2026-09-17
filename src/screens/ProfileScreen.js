@@ -263,6 +263,23 @@ export default function ProfileScreen() {
     );
   }, [editData.birthYear, editData.birthMonth, editData.birthDay]);
 
+  // 用 Apple 登录且选了「隐藏我的邮件地址」时，Apple 只给一个
+  // xxx@privaterelay.appleid.com 的转发地址，真实 Apple ID 永远拿不到。
+  // 把它当邮箱显示会让用户看着一串没见过的地址发懵，所以标明登录方式；
+  // 只有拿到真实邮箱时才把地址显示出来。
+  const accountIdentity = useMemo(() => {
+    if (!account) return '';
+    const email = account.email || '';
+    const isApple = account.app_metadata?.provider === 'apple';
+    const isRelay = email.endsWith('@privaterelay.appleid.com');
+    if (isApple) {
+      return isRelay || !email
+        ? t('profile.appleSignIn')
+        : `${t('profile.appleSignIn')} · ${email}`;
+    }
+    return email || t('profile.signedIn');
+  }, [account, t]);
+
   const cityProvince = useMemo(
     () => findProvinceByCity(editData.city),
     [editData.city],
@@ -442,17 +459,16 @@ export default function ProfileScreen() {
         </View>
 
         {/* ── 账号：未登录时是可选的云同步入口，不挡任何功能 ── */}
-        <Text style={s.sectionLabel}>{t('profile.account')}</Text>
+        <View style={s.card}>
+          <Text style={s.cardTitle}>{t('profile.account')}</Text>
         {account ? (
           <>
-            <View style={s.accountCard}>
-              <Ionicons name="cloud-done-outline" size={20} color={theme.accent} />
-              <View style={{ flex: 1, minWidth: 0 }}>
+            <View style={s.accountStatus}>
+              <View style={s.accountStatusHead}>
+                <Ionicons name="cloud-done-outline" size={16} color={theme.accent} />
                 <Text style={s.accountTitle}>{t('profile.cloudOn')}</Text>
-                <Text style={s.accountDesc} numberOfLines={1}>
-                  {account.email || t('profile.signedIn')}
-                </Text>
               </View>
+              <Text style={s.accountDesc} numberOfLines={1}>{accountIdentity}</Text>
             </View>
 
             <TouchableOpacity
@@ -471,14 +487,12 @@ export default function ProfileScreen() {
           </>
         ) : (
           <>
-            <View style={s.accountCard}>
-              <Ionicons name="phone-portrait-outline" size={20} color={theme.textMuted} />
-              <View style={{ flex: 1, minWidth: 0 }}>
+            <View style={s.accountStatus}>
+              <View style={s.accountStatusHead}>
+                <Ionicons name="phone-portrait-outline" size={16} color={theme.textMuted} />
                 <Text style={s.accountTitle}>{t('profile.localMode')}</Text>
-                <Text style={s.accountDesc}>
-                  {t('profile.localModeDesc')}
-                </Text>
               </View>
+              <Text style={s.accountDesc}>{t('profile.localModeDesc')}</Text>
             </View>
 
             <TouchableOpacity
@@ -491,6 +505,7 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           </>
         )}
+        </View>
 
         {/* ── 破坏性操作 ── */}
         <TouchableOpacity
@@ -500,11 +515,6 @@ export default function ProfileScreen() {
           accessibilityLabel={t('profile.clearTitle')}
         >
           <Text style={s.dangerBtnLabel}>{t('profile.clearTitle')}</Text>
-          <Text style={s.dangerBtnDesc}>
-            {account
-              ? t('profile.clearDescSignedIn')
-              : t('profile.clearDescLocal')}
-          </Text>
         </TouchableOpacity>
 
         {account && (
@@ -515,7 +525,6 @@ export default function ProfileScreen() {
             accessibilityLabel={t('profile.deleteAccountTitle')}
           >
             <Text style={s.dangerBtnLabel}>{t('profile.deleteAccountTitle')}</Text>
-            <Text style={s.dangerBtnDesc}>{t('profile.deleteAccountDesc')}</Text>
           </TouchableOpacity>
         )}
 
@@ -897,29 +906,25 @@ const makeStyles = (t, isDark) => {
 
   // Bottom buttons
   // 三个底部操作共用同一形态：等高、等圆角、居中内容，只靠颜色区分危险程度
-  sectionLabel: {
-    fontSize: 11.5, fontFamily: FONTS.uiBold, color: t.textMuted,
-    letterSpacing: 1.6, textTransform: 'uppercase',
-    marginHorizontal: 16, marginTop: 28, marginBottom: 10,
-  },
-  accountCard: {
-    marginHorizontal: 16, paddingHorizontal: 16, paddingVertical: 14,
-    borderRadius: RADIUS.btn, backgroundColor: t.card,
-    borderWidth: 1, borderColor: t.border,
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-  },
+  // 账号区整体是个区块卡片（和「外观」「健身房排行」一致），但状态本身是
+  // 卡片里的两行文字，不再做成独立的小卡片 —— 之前那种白底+边框+圆角+row
+  // 的小卡片和「记录」页里可点击的健身房行几乎一样，只差一个 ›，用户分不清
+  // 哪个能点。区块卡片是容器，行卡片才是「可点」的信号，两者不能混。
+  accountStatus: { marginBottom: 4 },
+  accountStatusHead: { flexDirection: 'row', alignItems: 'center', gap: 7 },
   accountTitle: { fontSize: 15, fontFamily: FONTS.uiBold, color: t.textPrimary },
   accountDesc: { fontSize: 12.5, color: t.textMuted, fontFamily: FONTS.ui, marginTop: 2 },
   loginBtn: {
-    marginHorizontal: 16, marginTop: 12,
+    marginTop: 12,
     height: ACTION_BTN_HEIGHT, borderRadius: RADIUS.btn,
     backgroundColor: t.accent, alignItems: 'center', justifyContent: 'center',
   },
   loginBtnText: { color: t.onAccent, fontSize: 15, fontFamily: FONTS.uiBold },
   logoutBtn: {
-    marginHorizontal: 16, marginTop: 12,
+    marginTop: 12,
     height: ACTION_BTN_HEIGHT, borderRadius: RADIUS.btn,
-    backgroundColor: t.card, alignItems: 'center', justifyContent: 'center',
+    // card2 而不是 card：这个按钮现在位于白色卡片内部，同色会整个消失
+    backgroundColor: t.card2, alignItems: 'center', justifyContent: 'center',
     borderWidth: 1, borderColor: t.border,
   },
   logoutBtnText: { color: t.textPrimary, fontSize: 15, fontFamily: FONTS.uiBold },
@@ -931,10 +936,6 @@ const makeStyles = (t, isDark) => {
   },
   dangerBtnLast: { marginBottom: 32 },
   dangerBtnLabel: { fontSize: 15, fontFamily: FONTS.uiBold, color: danger.fg, textAlign: 'center' },
-  dangerBtnDesc: {
-    fontSize: 12, color: t.textMuted, fontFamily: FONTS.ui,
-    marginTop: 2, textAlign: 'center',
-  },
 
   // Modal
   modalOverlay: { flex: 1, backgroundColor: 'rgba(10,9,8,0.5)', justifyContent: 'flex-end' },
