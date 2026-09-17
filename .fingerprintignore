@@ -1,0 +1,26 @@
+# 从 runtimeVersion 指纹里排除「本地构建写回 node_modules 的产物」。
+#
+# 背景：expo-modules-jsi 的 Pod 里有一个构建阶段
+# `[CP-User] Build ExpoModulesJSI xcframework`，它把编译结果写回
+# node_modules/expo-modules-jsi/apple/ 下面。本机跑过几次构建之后，那里就多出
+# .DerivedData/ .generated/ .swiftpm/ Products/ 四个目录，而 EAS 上是全新安装的
+# node_modules，干干净净。
+#
+# 于是同一份代码在两边算出不同的 fingerprint，EAS 在 Configure expo-updates
+# 阶段判定「本地发布的更新将与此构建不兼容」并终止（2026-09-17，构建 1.1.0 (10)）：
+#   本地: 3387adda91156011558355802af88cac9a00e24e
+#   EAS:  78edd40ee94b8a3310a28d5f9138401fa0e2b10b
+#   唯一差异源: node_modules/expo-modules-jsi/apple
+#
+# @expo/fingerprint 的默认规则覆盖了 ios/Pods 和 ios/build，但没覆盖这种
+# 「写回 node_modules」的情况。
+#
+# 排除它们不会削弱指纹的作用：这些是产物，不是源码。真正决定原生环境的是包的
+# 版本本身，而它已经通过 package.json 和 lockfile 进入了指纹。
+#
+# 扫描过整个 node_modules，目前只有这一个包会写回产物；其余 Expo 包的
+# xcframework 是随包发布的，不是本地生成的。
+node_modules/expo-modules-jsi/apple/.DerivedData/
+node_modules/expo-modules-jsi/apple/.generated/
+node_modules/expo-modules-jsi/apple/.swiftpm/
+node_modules/expo-modules-jsi/apple/Products/
