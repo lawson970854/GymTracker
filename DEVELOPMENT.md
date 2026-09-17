@@ -1,7 +1,7 @@
 # 开发与测试环境
 
 记录本项目的签名配置、调试方式，以及已经踩过的环境坑。
-最后更新：2026-09-16。
+最后更新：2026-09-17。
 
 ---
 
@@ -84,28 +84,25 @@ npx expo start
 ### 2. 动了原生部分，需要重装
 
 本机构建是默认方式（比 EAS 快，签名已配好）。
-**注意：`npx expo run:ios` 在这台 Mac 上不可用**（原因见坑 1），用下面这套：
+**`npx expo run:ios` 在这台 Mac 上不可用**（原因见坑 1），用仓库里的脚本：
 
 ```bash
-# 1) 如果改了 app.json 的原生配置
-npx expo prebuild --platform ios
-LANG=en_US.UTF-8 pod install --project-directory=ios
-
-# 2) 编译（把 <MAC_IP> 换成 ipconfig getifaddr en0 的结果）
-LANG=en_US.UTF-8 REACT_NATIVE_PACKAGER_HOSTNAME=<MAC_IP> \
-  xcodebuild -workspace ios/GymTracker.xcworkspace -scheme GymTracker \
-  -configuration Debug -destination 'id=<DEVICE_UDID>' \
-  -derivedDataPath /tmp/gymtracker-dd -allowProvisioningUpdates build
-
-# 3) 安装并启动（手机需解锁）
-xcrun devicectl device install app --device <DEVICE_UDID> \
-  /tmp/gymtracker-dd/Build/Products/Debug-iphoneos/app.app
-xcrun devicectl device process launch --device <DEVICE_UDID> com.frankwang.gymtracker
+./scripts/run-device.sh
 ```
 
-当前设备 UDID：`00008150-000202991146401C`（F-iPhone / iPhone 17）
+它做四件事：检查设备是否连着（否则 xcodebuild 会以一句很难懂的
+`Unable to find a destination matching...` 失败）、编译、把 Metro 地址改成
+mDNS 主机名、安装并启动。手机锁屏时会重试等待解锁。
 
-`REACT_NATIVE_PACKAGER_HOSTNAME` 会被写进包里的 `ip.txt`，App 靠它找 Metro。**Mac 的 IP 变了就必须重新构建**，否则手机连不上。
+如果改了 `app.json` 的原生配置，先跑这两条再执行脚本：
+
+```bash
+npx expo prebuild --platform ios
+LANG=en_US.UTF-8 pod install --project-directory=ios
+```
+
+当前设备 UDID：`00008150-000202991146401C`（F-iPhone / iPhone 17）。
+换设备用 `DEVICE_UDID=xxx ./scripts/run-device.sh`。
 
 ### 3. 发版前验证
 
@@ -196,7 +193,7 @@ unsanitizedScriptURLString = (null)
 
 - **锁屏** → 安装报 `The device is not able to fulfill the requested usage assertion requirements`，或启动报 `BSErrorCodeDescription = Locked`。建议调试期间把 设置 → 显示与亮度 → 自动锁定 设为「永不」
 - **掉 Wi-Fi** → 红屏，报错和坑 3 一模一样。**先看状态栏有没有 Wi-Fi 图标**，掉到蜂窝网络就连不上 Metro
-- **拔线** → `devicectl` 显示 `unavailable`
+- **拔线** → `devicectl` 显示 `unavailable`，`run-device.sh` 会直接告诉你
 
 ### 坑 5：改语言包必须完整重启 App
 
@@ -213,6 +210,21 @@ Unicode Normalization not appropriate for ASCII-8BIT (Encoding::CompatibilityErr
 ```
 
 加 `LANG=en_US.UTF-8` 即可。（交互式终端通常自带，脚本里要显式给。）
+
+### 坑 7：Metro 地址是编译时烘进包里的
+
+RN 的构建脚本 `node_modules/react-native/scripts/react-native-xcode.sh`
+遍历 `en0`~`en8` 取第一个有 IP 的网卡，写进包内的 `ip.txt`，App 靠它找 Metro。
+
+**它完全不读 `REACT_NATIVE_PACKAGER_HOSTNAME`**——传这个环境变量没有任何作用
+（曾经误以为有用，因为传的值恰好等于当时的 IP，看不出区别）。
+
+后果是 Mac 的 IP 一变，手机就红屏报 `No script URL provided`，而 Metro
+其实好好跑着。2026-09-16 到 17 日之间因为这个折腾了两次。
+
+`run-device.sh` 的解法：构建完之后把 `ip.txt` 改写成 mDNS 主机名
+（`F-Mac.local`），IP 怎么变都能解析到。`ip.txt` 是纯文本资源、不参与签名校验，
+构建后再改是安全的，已实测通过。主机名解析不了时脚本自动退回 IP。
 
 ---
 
