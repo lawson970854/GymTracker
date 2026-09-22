@@ -404,8 +404,30 @@ export function getBestRecord(records, gymId, machineId) {
   return recs.reduce((best, r) => r.volume > best.volume ? r : best, recs[0]);
 }
 
+// 训练记录的 date 字段是「本地日历日」的 YYYY-MM-DD，不带时区概念 ——
+// 用户说的「9 月 18 日练的」指的是他当地的 9 月 18 日。
+//
+// 所以不能用 toISOString()：它输出 UTC。东八区在凌晨 0–8 点调用，
+// 会得到前一天，于是早起或半夜补记的训练被记到昨天。
+//
+// 也不能用 new Date('2026-09-18') 反向解析：按 ECMAScript 规范，只有日期的
+// ISO 字符串按 UTC 午夜解释，在负时区（如美洲）会变成前一天。
+//
+// 这两个函数成对使用，全程只碰本地年月日，不经过 UTC。
+export function formatLocalDate(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+export function parseLocalDate(str) {
+  const [y, m, d] = String(str).split('-').map(Number);
+  return new Date(y, (m || 1) - 1, d || 1);
+}
+
 export function today() {
-  return new Date().toISOString().slice(0, 10);
+  return formatLocalDate(new Date());
 }
 
 // 本机还有没有未上云的数据（登录时决定要不要走搬运流程）

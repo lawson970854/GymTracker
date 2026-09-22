@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchGymData, addRecord as dbAddRecord, updateRecord as dbUpdateRecord, deleteRecord as dbDeleteRecord, calcVolume, getBestRecord, today } from '../storage';
+import { fetchGymData, addRecord as dbAddRecord, updateRecord as dbUpdateRecord, deleteRecord as dbDeleteRecord, calcVolume, getBestRecord, today, formatLocalDate, parseLocalDate } from '../storage';
 import { GYM_DATA_KEY } from '../queryClient';
 import { onMutationError } from '../mutationError';
 import SetInput from '../components/SetInput';
@@ -99,11 +99,13 @@ function DatePicker({ value, onChange }) {
   const DateTimePicker = require('@react-native-community/datetimepicker').default;
   return (
     <DateTimePicker
-      value={new Date(value)}
+      value={parseLocalDate(value)}
       mode="date"
       display={Platform.OS === 'ios' ? 'compact' : 'default'}
       themeVariant={isDark ? 'dark' : 'light'}
-      onChange={(_, d) => { if (d) onChange(d.toISOString().slice(0, 10)); }}
+      // 训练记录只能记已经发生的训练，未来的日期不该可选
+      maximumDate={new Date()}
+      onChange={(_, d) => { if (d) onChange(formatLocalDate(d)); }}
     />
   );
 }
