@@ -158,8 +158,8 @@
     "resent": "已重新发送",
     "backToLoginA11y": "返回登录",
     "verifiedPrompt": "已经验证好了？",
-    "goLoginInline": " 去登录",
-    "goSignupInline": " 去注册",
+    "loginLink": "登录",
+    "signupLink": "注册",
     "welcomeBack": "欢迎回来",
     "createAccount": "创建你的账号",
     "subtitleLogin": "训练记录同步到云端，换设备接着用",
@@ -276,8 +276,7 @@
   },
   "welcome": {
     "tagline": "记录每一次训练，看见每一点进步",
-    "cloudCta": "登录 / 注册开始",
-    "cloudBenefit": "换手机不丢记录",
+    "cloudCta": "登录",
     "localCta": "先不登录，直接开始"
   }
 }

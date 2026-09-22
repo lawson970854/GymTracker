@@ -1,10 +1,10 @@
 // 首次启动的存储方式选择页。
 //
-// 为什么两个入口的视觉权重不对等：云端是实心主按钮，本机是文字链接。
-// 等权的两个按钮会把「本机存储」抬成和云端平起平坐的选项，而它其实是
-// 降级方案 —— 数据只在这一台设备上。用户在这个时点还没看到任何产品价值，
-// 没有信息基础做「数据放哪」这种技术决策，所以这里不问存储位置，只讲后果
-// （会不会丢），并把推荐路径做得更显眼。
+// 两个入口都是按钮，尺寸、圆角、字号一致，看起来是一组。层级靠填充区分：
+// 登录是实心强调色 + 投影，「先不登录」是白底描边、无投影。
+// 不做成「实心按钮 + 文字链接」那种强弱对比，是因为那样两者看起来不像同一
+// 层级的选择；但也不能做成完全等权 —— 本机模式数据只在这一台设备上，是降级
+// 方案，不该和云端平起平坐。填充差异是这两者之间的折中。
 //
 // 合规注意：非账号路径必须始终清晰可见、可直达。1.0 (7) 曾因 App Review
 // 指南 5.1.1(v)（把不依赖账号的功能挡在登录墙后）被驳回。「先不登录，直接
@@ -19,6 +19,9 @@ import {
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useTheme, RADIUS, FONTS } from '../ThemeContext';
+
+// 两个按钮共用，写成常量是为了改的时候不会只改一个
+const BTN_HEIGHT = 54;
 
 export default function WelcomeScreen({ onChooseCloud, onChooseLocal }) {
   const { t } = useTranslation();
@@ -47,7 +50,6 @@ export default function WelcomeScreen({ onChooseCloud, onChooseLocal }) {
         >
           <Text style={s.cloudBtnText}>{t('welcome.cloudCta')}</Text>
         </TouchableOpacity>
-        <Text style={s.cloudBenefit}>{t('welcome.cloudBenefit')}</Text>
 
         <TouchableOpacity
           style={s.localBtn}
@@ -86,17 +88,20 @@ const makeStyles = (t) => StyleSheet.create({
 
   cloudBtn: {
     backgroundColor: t.accent, borderRadius: RADIUS.btn,
-    height: 54, alignItems: 'center', justifyContent: 'center',
+    height: BTN_HEIGHT, alignItems: 'center', justifyContent: 'center',
     shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 18,
     shadowOffset: { width: 0, height: 8 }, elevation: 4,
   },
   cloudBtnText: { color: t.onAccent, fontSize: 16, fontFamily: FONTS.uiBold },
-  cloudBenefit: {
-    fontSize: 13, textAlign: 'center', color: t.textMuted,
-    marginTop: 12, fontFamily: FONTS.ui,
-  },
 
-  localBtn: { marginTop: 26, alignItems: 'center', paddingVertical: 10 },
-  localBtnText: { fontSize: 15, color: t.textMuted, fontFamily: FONTS.uiBold },
+  // 12pt：两个按钮是一组，靠紧凑间距让它们读起来是「一个选择」而不是
+  // 「两件不相干的事」。上方文案块到这一组之间留 44pt（见 tagline）。
+  localBtn: {
+    marginTop: 12,
+    backgroundColor: t.card, borderRadius: RADIUS.btn,
+    height: BTN_HEIGHT, alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: t.border,
+  },
+  localBtnText: { color: t.textPrimary, fontSize: 16, fontFamily: FONTS.uiBold },
 
 });

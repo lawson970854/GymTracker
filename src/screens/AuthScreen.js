@@ -200,7 +200,7 @@ export default function AuthScreen({ onSkip }) {
                 style={s.switchRow}
               >
                 <Text style={s.switchText}>
-                  {tr('auth.verifiedPrompt')}<Text style={s.switchLink}>{tr('auth.goLoginInline')}</Text>
+                  {tr('auth.verifiedPrompt')}{'  '}<Text style={s.switchLink}>{tr('auth.loginLink')}</Text>
                 </Text>
               </TouchableOpacity>
 
@@ -356,9 +356,14 @@ export default function AuthScreen({ onSkip }) {
             accessibilityLabel={isLogin ? tr('auth.noAccountA11y') : tr('auth.hasAccountA11y')}
             style={s.switchRow}
           >
+            {/* 原来写的是「没有账号？去注册」，把「去注册」用颜色劈成两半，
+                看起来像一个词被切开，加间距也救不回来。现在链接本身就是完整
+                的词。间隔用 JSX 插入而不是写在文案末尾 —— 行尾空格是隐形的，
+                容易在后续编辑里丢掉。 */}
             <Text style={s.switchText}>
               {isLogin ? tr('auth.noAccount') : tr('auth.hasAccount')}
-              <Text style={s.switchLink}>{isLogin ? tr('auth.goSignupInline') : tr('auth.goLoginInline')}</Text>
+              {'  '}
+              <Text style={s.switchLink}>{isLogin ? tr('auth.signupLink') : tr('auth.loginLink')}</Text>
             </Text>
           </TouchableOpacity>
 
