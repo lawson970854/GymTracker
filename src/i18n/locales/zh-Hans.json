@@ -21,7 +21,9 @@
     "saveFailed": "保存失败",
     "statRecords": "训练记录",
     "statDays": "训练天数",
-    "statVolume": "总训练量"
+    "statVolume": "总训练量",
+    "reorderFailed": "排序失败",
+    "dragHint": "长按可拖动排序"
   },
   "nav": {
     "recordTab": "记录",

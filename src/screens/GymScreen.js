@@ -8,10 +8,11 @@ import { Swipeable } from 'react-native-gesture-handler';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchGymData, addMachine as dbAddMachine, deleteMachine as dbDeleteMachine, addCategory as dbAddCategory, updateMachineName as dbUpdateMachineName, getBestRecord } from '../storage';
+import { fetchGymData, addMachine as dbAddMachine, deleteMachine as dbDeleteMachine, addCategory as dbAddCategory, updateMachineName as dbUpdateMachineName, reorderMachines as dbReorderMachines, sortByIds, getBestRecord } from '../storage';
 import { GYM_DATA_KEY } from '../queryClient';
 import { onMutationError } from '../mutationError';
 import { useTheme, RADIUS, FONTS } from '../ThemeContext';
+import DraggableList from '../components/DraggableList';
 import RenameModal from '../components/RenameModal';
 import { useTranslation } from 'react-i18next';
 import { newId } from '../ids';
@@ -42,11 +43,12 @@ export default function GymScreen({ navigation, route }) {
   // 否则弹窗关掉后它还敞着，用户会以为界面卡住了。
   const swipeRefs = useRef({});
   const closeSwipe = (id) => swipeRefs.current[id]?.close();
+  const closeAllSwipes = () => Object.values(swipeRefs.current).forEach(r => r?.close());
 
   const selectedCategory = categories.find(c => c.id === selectedCategoryId);
 
   const addMutation = useMutation({
-    mutationFn: ({ id, name, categoryId }) => dbAddMachine(gymId, name, categoryId, id),
+    mutationFn: ({ id, name, categoryId, sortOrder }) => dbAddMachine(gymId, name, categoryId, id, sortOrder),
     onMutate: async ({ id, name }) => {
       await qc.cancelQueries({ queryKey: GYM_DATA_KEY });
       const prev = qc.getQueryData(GYM_DATA_KEY);
@@ -84,7 +86,7 @@ export default function GymScreen({ navigation, route }) {
   });
 
   const addCategoryMutation = useMutation({
-    mutationFn: dbAddCategory,
+    mutationFn: (name) => dbAddCategory(name, undefined, categories.length),
     onSuccess: (newCat) => {
       qc.invalidateQueries({ queryKey: GYM_DATA_KEY });
       setSelectedCategoryId(newCat.id);
@@ -114,6 +116,23 @@ export default function GymScreen({ navigation, route }) {
     onSettled: () => qc.invalidateQueries({ queryKey: GYM_DATA_KEY }),
   });
 
+  const reorderMutation = useMutation({
+    mutationFn: (ids) => dbReorderMachines(gymId, ids),
+    onMutate: async (ids) => {
+      await qc.cancelQueries({ queryKey: GYM_DATA_KEY });
+      const prev = qc.getQueryData(GYM_DATA_KEY);
+      qc.setQueryData(GYM_DATA_KEY, old => ({
+        ...old,
+        gyms: (old?.gyms || []).map(g =>
+          g.id === gymId ? { ...g, machines: sortByIds(g.machines || [], ids) } : g
+        ),
+      }));
+      return { prev };
+    },
+    onError: onMutationError(qc, GYM_DATA_KEY, 'reorderMachines', 'common.reorderFailed'),
+    onSettled: () => qc.invalidateQueries({ queryKey: GYM_DATA_KEY }),
+  });
+
   const addMachine = () => {
     const name = newName.trim();
     if (!name) return;
@@ -122,7 +141,7 @@ export default function GymScreen({ navigation, route }) {
     setAdding(false);
     setSelectedCategoryId(null);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    addMutation.mutate({ id: newId(), name, categoryId });
+    addMutation.mutate({ id: newId(), name, categoryId, sortOrder: machines.length });
   };
 
   const cancelAdd = () => {
@@ -161,11 +180,14 @@ export default function GymScreen({ navigation, route }) {
     <SafeAreaView style={s.safe}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={headerHeight}>
         <View style={s.container}>
-          <FlatList
+          <DraggableList
             data={machines}
             keyExtractor={m => m.id}
-            contentContainerStyle={machines.length === 0 && s.emptyContainer}
-            renderItem={({ item }) => (
+            onReorder={ids => reorderMutation.mutate(ids)}
+            onDragStart={closeAllSwipes}
+            emptyContainerStyle={s.emptyContainer}
+            ListEmptyComponent={<Text style={s.empty}>{t('gym.empty')}</Text>}
+            renderItem={(item) => (
               <Swipeable
                 ref={r => { swipeRefs.current[item.id] = r; }}
                 renderRightActions={() => (
@@ -198,7 +220,7 @@ export default function GymScreen({ navigation, route }) {
                   })}
                   accessibilityRole="button"
                   accessibilityLabel={item.name}
-                  accessibilityHint={t('gym.openMachineHint')}
+                  accessibilityHint={`${t('gym.openMachineHint')}。${t('common.dragHint')}`}
                 >
                   <View style={s.rowIcon}>
                     <Ionicons name="barbell-outline" size={22} color={theme.accent} />
@@ -211,9 +233,6 @@ export default function GymScreen({ navigation, route }) {
                 </TouchableOpacity>
               </Swipeable>
             )}
-            ListEmptyComponent={
-              <Text style={s.empty}>{t('gym.empty')}</Text>
-            }
           />
           {adding ? (
             <View style={s.addCard}>

@@ -22,12 +22,15 @@ export async function fetchGymData() {
   // 必须显式排序。不写 ORDER BY 时 Postgres 按物理存储顺序返回，而 UPDATE 在
   // MVCC 下不是原地修改 —— 它写一个新行版本追加到堆末尾、把旧版本标记为死行。
   // 结果就是：重命名一个健身房，它会跳到列表最后，而且不会自己回来。
-  // 按 created_at 排序 = 按添加先后，和未登录时本机数组的顺序一致。
+  //
+  // 健身房/器械/分类支持手动拖拽排序，首选 sort_order；nullsFirst: false 让没有
+  // 排序值的行沉到末尾（而不是因为缺省值冒到顶部），再按 created_at 兜底。
+  const bySortOrder = q => q.order('sort_order', { nullsFirst: false }).order('created_at');
   const [gymsRes, machinesRes, recordsRes, categoriesRes, itemsRes] = await Promise.all([
-    supabase.from('gyms').select('*').eq('user_id', userId).order('created_at'),
-    supabase.from('machines').select('*').eq('user_id', userId).order('created_at'),
+    bySortOrder(supabase.from('gyms').select('*').eq('user_id', userId)),
+    bySortOrder(supabase.from('machines').select('*').eq('user_id', userId)),
     supabase.from('records').select('*').eq('user_id', userId).order('created_at'),
-    supabase.from('categories').select('*').eq('user_id', userId).order('created_at'),
+    bySortOrder(supabase.from('categories').select('*').eq('user_id', userId)),
     supabase.from('category_items').select('*').eq('user_id', userId).order('created_at'),
   ]);
 
@@ -63,13 +66,22 @@ export async function fetchGymData() {
 // ── 写操作（各屏幕 useMutation 使用）─────────────────
 // id 由调用方生成并传入（见 src/ids.js 的说明）。不传则退回服务端默认值，
 // 但这样乐观更新就拿不到最终 ID，正常路径都应该传。
-export async function addGym(name, id) {
+// sortOrder 由调用方传入当前列表长度，新条目落到末尾。本地模式忽略它（数组顺序即显示顺序）。
+export async function addGym(name, id, sortOrder) {
   const userId = await getUserId();
   if (!userId) return local.addGym(name, id);
   const { data, error } = await supabase.from('gyms')
-    .insert({ ...(id ? { id } : {}), name, user_id: userId }).select().single();
+    .insert({ ...(id ? { id } : {}), name, user_id: userId, sort_order: sortOrder })
+    .select().single();
   if (error) throw error;
   return { id: data.id, name: data.name, machines: [] };
+}
+
+export async function reorderGyms(ids) {
+  const userId = await getUserId();
+  if (!userId) return local.reorderGyms(ids);
+  const { error } = await supabase.rpc('reorder_gyms', { ids });
+  if (error) throw error;
 }
 
 export async function deleteGym(gymId) {
@@ -86,11 +98,12 @@ export async function updateGymName(gymId, name) {
   if (error) throw error;
 }
 
-export async function addMachine(gymId, name, categoryId, id) {
+export async function addMachine(gymId, name, categoryId, id, sortOrder) {
   const userId = await getUserId();
   if (!userId) return local.addMachine(gymId, name, categoryId, id);
   const { data, error } = await supabase.from('machines')
-    .insert({ ...(id ? { id } : {}), gym_id: gymId, name, user_id: userId }).select().single();
+    .insert({ ...(id ? { id } : {}), gym_id: gymId, name, user_id: userId, sort_order: sortOrder })
+    .select().single();
   if (error) throw error;
   // 如果指定了分类，自动关联到该分类
   if (categoryId) {
@@ -112,6 +125,14 @@ export async function updateMachineName(machineId, name) {
   const userId = await getUserId();
   if (!userId) return local.updateMachineName(machineId, name);
   const { error } = await supabase.from('machines').update({ name }).eq('id', machineId);
+  if (error) throw error;
+}
+
+// 器械是在所属健身房内排序，ids 只含这一个健身房的器械。
+export async function reorderMachines(gymId, ids) {
+  const userId = await getUserId();
+  if (!userId) return local.reorderMachines(gymId, ids);
+  const { error } = await supabase.rpc('reorder_machines', { ids });
   if (error) throw error;
 }
 
@@ -151,13 +172,21 @@ export async function deleteRecord(recordId) {
   if (error) throw error;
 }
 
-export async function addCategory(name, id) {
+export async function addCategory(name, id, sortOrder) {
   const userId = await getUserId();
   if (!userId) return local.addCategory(name, id);
   const { data, error } = await supabase.from('categories')
-    .insert({ ...(id ? { id } : {}), name, user_id: userId }).select().single();
+    .insert({ ...(id ? { id } : {}), name, user_id: userId, sort_order: sortOrder })
+    .select().single();
   if (error) throw error;
   return { id: data.id, name: data.name, items: [] };
+}
+
+export async function reorderCategories(ids) {
+  const userId = await getUserId();
+  if (!userId) return local.reorderCategories(ids);
+  const { error } = await supabase.rpc('reorder_categories', { ids });
+  if (error) throw error;
 }
 
 export async function deleteCategory(categoryId) {
@@ -299,23 +328,25 @@ export async function migrateLocalDataToCloud() {
   const gymIdMap = {};
   const machineIdMap = {};
 
-  for (const gym of gyms) {
+  // 本地模式的顺序就是数组下标，搬上云时原样写进 sort_order，否则用户拖好的顺序会在登录后丢失。
+  for (const [gi, gym] of gyms.entries()) {
     const { data, error } = await supabase.from('gyms')
-      .insert({ name: gym.name, user_id: userId }).select().single();
+      .insert({ name: gym.name, user_id: userId, sort_order: gi }).select().single();
     if (error) throw error;
     gymIdMap[gym.id] = data.id;
 
-    for (const machine of gym.machines || []) {
+    for (const [mi, machine] of (gym.machines || []).entries()) {
       const { data: m, error: mErr } = await supabase.from('machines')
-        .insert({ gym_id: data.id, name: machine.name, user_id: userId }).select().single();
+        .insert({ gym_id: data.id, name: machine.name, user_id: userId, sort_order: mi })
+        .select().single();
       if (mErr) throw mErr;
       machineIdMap[machine.id] = m.id;
     }
   }
 
-  for (const cat of categories) {
+  for (const [ci, cat] of categories.entries()) {
     const { data, error } = await supabase.from('categories')
-      .insert({ name: cat.name, user_id: userId }).select().single();
+      .insert({ name: cat.name, user_id: userId, sort_order: ci }).select().single();
     if (error) throw error;
     const items = (cat.items || [])
       .filter(i => gymIdMap[i.gymId] && machineIdMap[i.machineId])
@@ -432,3 +463,6 @@ export function today() {
 
 // 本机还有没有未上云的数据（登录时决定要不要走搬运流程）
 export { hasLocalData } from './localStore';
+
+// 各屏幕的排序乐观更新要用它把缓存里的列表按新顺序重排
+export { sortByIds } from './localStore';

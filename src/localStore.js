@@ -55,6 +55,22 @@ export async function hasLocalData() {
   return Object.values(profile).some(v => v);
 }
 
+// 本地模式没有 sort_order 字段，数组顺序就是显示顺序。
+// 不在 ids 里的条目排到末尾并保持原有相对顺序（Array.sort 在 Hermes 上是稳定的），
+// 这样拖拽期间新增的条目不会被这次重排吞掉。
+export function sortByIds(list, ids) {
+  const rank = new Map(ids.map((id, i) => [id, i]));
+  return [...list].sort((a, b) => {
+    const ra = rank.get(a.id);
+    const rb = rank.get(b.id);
+    // 两个都不在 ids 里时必须返回 0。写成 (ra ?? Infinity) - (rb ?? Infinity)
+    // 会得到 NaN，Array.sort 拿到 NaN 比较器结果是未定义的。
+    if (ra === undefined) return rb === undefined ? 0 : 1;
+    if (rb === undefined) return -1;
+    return ra - rb;
+  });
+}
+
 // ── 健身房 ────────────────────────────────────────────
 export function addGym(name, id) {
   return mutate(data => {
@@ -78,6 +94,12 @@ export function updateGymName(gymId, name) {
   return mutate(data => {
     const gym = data.gyms.find(g => g.id === gymId);
     if (gym) gym.name = name;
+  });
+}
+
+export function reorderGyms(ids) {
+  return mutate(data => {
+    data.gyms = sortByIds(data.gyms, ids);
   });
 }
 
@@ -114,6 +136,13 @@ export function updateMachineName(machineId, name) {
       const m = (g.machines || []).find(x => x.id === machineId);
       if (m) m.name = name;
     });
+  });
+}
+
+export function reorderMachines(gymId, ids) {
+  return mutate(data => {
+    const gym = data.gyms.find(g => g.id === gymId);
+    if (gym) gym.machines = sortByIds(gym.machines || [], ids);
   });
 }
 
@@ -158,6 +187,12 @@ export function updateCategoryName(categoryId, name) {
   return mutate(data => {
     const cat = data.categories.find(c => c.id === categoryId);
     if (cat) cat.name = name;
+  });
+}
+
+export function reorderCategories(ids) {
+  return mutate(data => {
+    data.categories = sortByIds(data.categories, ids);
   });
 }
 

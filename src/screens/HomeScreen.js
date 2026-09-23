@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef } from 'react';
 import {
-  View, Text, FlatList, TouchableOpacity,
+  View, Text, TouchableOpacity,
   TextInput, Alert, StyleSheet, SafeAreaView, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { useHeaderHeight } from '@react-navigation/elements';
@@ -8,10 +8,11 @@ import { Swipeable } from 'react-native-gesture-handler';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchGymData, addGym as dbAddGym, deleteGym as dbDeleteGym, updateGymName as dbUpdateGymName } from '../storage';
+import { fetchGymData, addGym as dbAddGym, deleteGym as dbDeleteGym, updateGymName as dbUpdateGymName, reorderGyms as dbReorderGyms, sortByIds } from '../storage';
 import { GYM_DATA_KEY } from '../queryClient';
 import { onMutationError } from '../mutationError';
 import { useTheme, RADIUS, FONTS } from '../ThemeContext';
+import DraggableList from '../components/DraggableList';
 import RenameModal from '../components/RenameModal';
 import { useTranslation } from 'react-i18next';
 import { newId } from '../ids';
@@ -33,9 +34,10 @@ export default function HomeScreen({ navigation }) {
   // 否则弹窗关掉后它还敞着，用户会以为界面卡住了。
   const swipeRefs = useRef({});
   const closeSwipe = (id) => swipeRefs.current[id]?.close();
+  const closeAllSwipes = () => Object.values(swipeRefs.current).forEach(r => r?.close());
 
   const addMutation = useMutation({
-    mutationFn: ({ id, name }) => dbAddGym(name, id),
+    mutationFn: ({ id, name, sortOrder }) => dbAddGym(name, id, sortOrder),
     onMutate: async ({ id, name }) => {
       await qc.cancelQueries({ queryKey: GYM_DATA_KEY });
       const prev = qc.getQueryData(GYM_DATA_KEY);
@@ -79,13 +81,28 @@ export default function HomeScreen({ navigation }) {
     onSettled: () => qc.invalidateQueries({ queryKey: GYM_DATA_KEY }),
   });
 
+  const reorderMutation = useMutation({
+    mutationFn: dbReorderGyms,
+    onMutate: async (ids) => {
+      await qc.cancelQueries({ queryKey: GYM_DATA_KEY });
+      const prev = qc.getQueryData(GYM_DATA_KEY);
+      qc.setQueryData(GYM_DATA_KEY, old => ({
+        ...old,
+        gyms: sortByIds(old?.gyms || [], ids),
+      }));
+      return { prev };
+    },
+    onError: onMutationError(qc, GYM_DATA_KEY, 'reorderGyms', 'common.reorderFailed'),
+    onSettled: () => qc.invalidateQueries({ queryKey: GYM_DATA_KEY }),
+  });
+
   const addGym = () => {
     const name = newName.trim();
     if (!name) return;
     setNewName('');
     setAdding(false);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    addMutation.mutate({ id: newId(), name });
+    addMutation.mutate({ id: newId(), name, sortOrder: gyms.length });
   };
 
   const deleteGym = (gym) => {
@@ -106,11 +123,14 @@ export default function HomeScreen({ navigation }) {
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={headerHeight}>
         <View style={s.container}>
           <Text style={s.sectionTitle}>{t('home.sectionTitle')}</Text>
-          <FlatList
+          <DraggableList
             data={gyms}
             keyExtractor={g => g.id}
-            contentContainerStyle={gyms.length === 0 && s.emptyContainer}
-            renderItem={({ item }) => (
+            onReorder={ids => reorderMutation.mutate(ids)}
+            onDragStart={closeAllSwipes}
+            emptyContainerStyle={s.emptyContainer}
+            ListEmptyComponent={<Text style={s.empty}>{t('home.empty')}</Text>}
+            renderItem={(item) => (
               <Swipeable
                 ref={r => { swipeRefs.current[item.id] = r; }}
                 renderRightActions={() => (
@@ -141,7 +161,7 @@ export default function HomeScreen({ navigation }) {
                   onPress={() => navigation.navigate('Gym', { gymId: item.id, gymName: item.name })}
                   accessibilityRole="button"
                   accessibilityLabel={item.name}
-                  accessibilityHint={t('home.openGymHint')}
+                  accessibilityHint={`${t('home.openGymHint')}。${t('common.dragHint')}`}
                 >
                   <View style={s.rowIcon}>
                     <Ionicons name="location-outline" size={22} color={theme.accent} />
@@ -156,9 +176,6 @@ export default function HomeScreen({ navigation }) {
                 </TouchableOpacity>
               </Swipeable>
             )}
-            ListEmptyComponent={
-              <Text style={s.empty}>{t('home.empty')}</Text>
-            }
           />
           {adding ? (
             <View style={s.addRow}>
