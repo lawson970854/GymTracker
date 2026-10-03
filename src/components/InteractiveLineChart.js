@@ -42,7 +42,7 @@ export default function InteractiveLineChart({
   const cH = height - padT - padB;
 
   const n = data.length;
-  const minV = Math.min(...data);
+  const minV = Math.min(0, ...data);
   const maxV = Math.max(...data);
   const vRange = maxV - minV || 1;
 
