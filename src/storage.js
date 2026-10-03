@@ -5,6 +5,7 @@ import * as local from './localStore';
 import i18n from './i18n';
 
 const PROFILE_CACHE_KEY = '@gymtracker:profile';
+const WEIGHT_UNIT_CACHE_KEY = '@gymtracker:weightUnit';
 
 async function getUserId() {
   const { data: { session } } = await supabase.auth.getSession();
@@ -37,9 +38,11 @@ export async function fetchGymData() {
   const gyms = (gymsRes.data || []).map(g => ({
     id: g.id,
     name: g.name,
+    weightUnit: g.weight_unit,
+    // 器械的 weightUnit 为 null 表示跟随健身房，见 constants/units.js 的 machineUnit
     machines: (machinesRes.data || [])
       .filter(m => m.gym_id === g.id)
-      .map(m => ({ id: m.id, name: m.name })),
+      .map(m => ({ id: m.id, name: m.name, weightUnit: m.weight_unit })),
   }));
 
   const records = (recordsRes.data || []).map(r => ({
@@ -67,14 +70,14 @@ export async function fetchGymData() {
 // id 由调用方生成并传入（见 src/ids.js 的说明）。不传则退回服务端默认值，
 // 但这样乐观更新就拿不到最终 ID，正常路径都应该传。
 // sortOrder 由调用方传入当前列表长度，新条目落到末尾。本地模式忽略它（数组顺序即显示顺序）。
-export async function addGym(name, id, sortOrder) {
+export async function addGym(name, id, sortOrder, weightUnit) {
   const userId = await getUserId();
-  if (!userId) return local.addGym(name, id);
+  if (!userId) return local.addGym(name, id, weightUnit);
   const { data, error } = await supabase.from('gyms')
-    .insert({ ...(id ? { id } : {}), name, user_id: userId, sort_order: sortOrder })
+    .insert({ ...(id ? { id } : {}), name, user_id: userId, sort_order: sortOrder, weight_unit: weightUnit })
     .select().single();
   if (error) throw error;
-  return { id: data.id, name: data.name, machines: [] };
+  return { id: data.id, name: data.name, weightUnit: data.weight_unit, machines: [] };
 }
 
 export async function reorderGyms(ids) {
@@ -98,6 +101,14 @@ export async function updateGymName(gymId, name) {
   if (error) throw error;
 }
 
+// 健身房的器械单位：它下面没单独设单位的器械都跟着变，单独设过的不受影响。
+export async function updateGymUnit(gymId, weightUnit) {
+  const userId = await getUserId();
+  if (!userId) return local.updateGymUnit(gymId, weightUnit);
+  const { error } = await supabase.from('gyms').update({ weight_unit: weightUnit }).eq('id', gymId);
+  if (error) throw error;
+}
+
 export async function addMachine(gymId, name, categoryId, id, sortOrder) {
   const userId = await getUserId();
   if (!userId) return local.addMachine(gymId, name, categoryId, id);
@@ -111,7 +122,7 @@ export async function addMachine(gymId, name, categoryId, id, sortOrder) {
       category_id: categoryId, gym_id: gymId, machine_id: data.id, user_id: userId,
     });
   }
-  return { id: data.id, name: data.name };
+  return { id: data.id, name: data.name, weightUnit: data.weight_unit };
 }
 
 export async function deleteMachine(machineId) {
@@ -125,6 +136,14 @@ export async function updateMachineName(machineId, name) {
   const userId = await getUserId();
   if (!userId) return local.updateMachineName(machineId, name);
   const { error } = await supabase.from('machines').update({ name }).eq('id', machineId);
+  if (error) throw error;
+}
+
+// 只改显示和输入用的单位。记录里存的是 kg，不受影响。
+export async function updateMachineUnit(machineId, weightUnit) {
+  const userId = await getUserId();
+  if (!userId) return local.updateMachineUnit(machineId, weightUnit);
+  const { error } = await supabase.from('machines').update({ weight_unit: weightUnit }).eq('id', machineId);
   if (error) throw error;
 }
 
@@ -313,6 +332,44 @@ export async function uploadAvatar(localUri) {
   return `${publicUrl}?t=${Date.now()}`;
 }
 
+// ── 偏好单位 ──────────────────────────────────────────
+// 存在 profiles.weight_unit，跟账号走、多设备同步。null 表示用户还没选过，
+// 由 UnitContext 按手机的度量衡设置给默认值。
+// 不并进 loadProfile/saveProfile：saveProfile 是整行覆盖，编辑资料弹窗手里那份
+// profile 是打开时的快照，并进去会把期间改过的单位写回旧值。
+export async function loadWeightUnit() {
+  const userId = await getUserId();
+  if (!userId) return local.loadWeightUnit();
+  const { data, error } = await supabase.from('profiles').select('weight_unit').eq('id', userId).maybeSingle();
+  if (error) throw error;
+  const unit = data?.weight_unit ?? null;
+  try {
+    await AsyncStorage.setItem(`${WEIGHT_UNIT_CACHE_KEY}:${userId}`, unit ?? '');
+  } catch {}
+  return unit;
+}
+
+// 启动时先用缓存渲染，免得汇总数字先按默认单位闪一下再跳。
+export async function loadCachedWeightUnit() {
+  const userId = await getUserId();
+  if (!userId) return local.loadWeightUnit();
+  try {
+    return (await AsyncStorage.getItem(`${WEIGHT_UNIT_CACHE_KEY}:${userId}`)) || null;
+  } catch {
+    return null;
+  }
+}
+
+export async function saveWeightUnit(unit) {
+  const userId = await getUserId();
+  if (!userId) return local.saveWeightUnit(unit);
+  try {
+    await AsyncStorage.setItem(`${WEIGHT_UNIT_CACHE_KEY}:${userId}`, unit);
+  } catch {}
+  const { error } = await supabase.from('profiles').upsert({ id: userId, weight_unit: unit });
+  if (error) throw error;
+}
+
 // ── 本地数据上云：未登录期间记的东西，登录后不能丢 ─────
 // 由 App.js 在检测到「刚刚从未登录状态登录」时调用。
 export async function migrateLocalDataToCloud() {
@@ -331,13 +388,13 @@ export async function migrateLocalDataToCloud() {
   // 本地模式的顺序就是数组下标，搬上云时原样写进 sort_order，否则用户拖好的顺序会在登录后丢失。
   for (const [gi, gym] of gyms.entries()) {
     const { data, error } = await supabase.from('gyms')
-      .insert({ name: gym.name, user_id: userId, sort_order: gi }).select().single();
+      .insert({ name: gym.name, user_id: userId, sort_order: gi, weight_unit: gym.weightUnit }).select().single();
     if (error) throw error;
     gymIdMap[gym.id] = data.id;
 
     for (const [mi, machine] of (gym.machines || []).entries()) {
       const { data: m, error: mErr } = await supabase.from('machines')
-        .insert({ gym_id: data.id, name: machine.name, user_id: userId, sort_order: mi })
+        .insert({ gym_id: data.id, name: machine.name, user_id: userId, sort_order: mi, weight_unit: machine.weightUnit ?? null })
         .select().single();
       if (mErr) throw mErr;
       machineIdMap[machine.id] = m.id;

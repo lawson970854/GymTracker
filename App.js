@@ -31,6 +31,7 @@ import CategoryScreen from './src/screens/CategoryScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import { ThemeProvider, useTheme } from './src/ThemeContext';
 import { LocaleProvider } from './src/i18n/LocaleContext';
+import { UnitProvider } from './src/UnitContext';
 import { useTranslation } from 'react-i18next';
 
 const Stack = createStackNavigator();
@@ -274,15 +275,17 @@ function App() {
       <PersistQueryClientProvider client={queryClient} persistOptions={{ persister: asyncStoragePersister }}>
         <LocaleProvider>
           <ThemeProvider>
-            {showWelcome ? (
-              <WelcomeScreen
-                onChooseCloud={() => { setOpenAuthOnReady(true); markWelcomeSeen(); }}
-                onChooseLocal={markWelcomeSeen}
-              />
-            ) : (
-              <AppContent navRef={navRef} openAuthOnReady={openAuthOnReady} />
-            )}
-            {migrating && <MigratingOverlay />}
+            <UnitProvider>
+              {showWelcome ? (
+                <WelcomeScreen
+                  onChooseCloud={() => { setOpenAuthOnReady(true); markWelcomeSeen(); }}
+                  onChooseLocal={markWelcomeSeen}
+                />
+              ) : (
+                <AppContent navRef={navRef} openAuthOnReady={openAuthOnReady} />
+              )}
+              {migrating && <MigratingOverlay />}
+            </UnitProvider>
           </ThemeProvider>
         </LocaleProvider>
       </PersistQueryClientProvider>

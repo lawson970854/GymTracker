@@ -15,7 +15,8 @@ import { useNavigation } from '@react-navigation/native';
 import { useTheme, RADIUS, FONTS, SCHEMES, SCHEME_LABEL_KEYS } from '../ThemeContext';
 import { REGIONS, PROVINCE_NAMES, findProvinceByCity, getCitiesForProvince } from '../constants/regions';
 import { useTranslation } from 'react-i18next';
-import { UNIT_HEIGHT, UNIT_WEIGHT, UNIT_VOLUME } from '../constants/units';
+import { UNIT_HEIGHT, WEIGHT_UNITS, toUnit, fromUnit, volumeNumber } from '../constants/units';
+import { useWeightUnit } from '../UnitContext';
 
 // 配色 swatch 用色（与 ThemeContext 内 light 模式 accent 对齐）
 const SCHEME_SWATCH = {
@@ -43,7 +44,12 @@ const PROFILE_FIELDS = [
 
 const GENDERS = ['男', '女'];
 const HEIGHTS = Array.from({ length: 81 }, (_, i) => String(140 + i));
-const WEIGHTS = Array.from({ length: 111 }, (_, i) => String(40 + i));
+// 体重存 kg，按偏好单位选。lb 的范围和 kg 的 40–150 大致对应
+const BODY_WEIGHTS = {
+  kg: Array.from({ length: 111 }, (_, i) => String(40 + i)),
+  lb: Array.from({ length: 243 }, (_, i) => String(88 + i)),
+};
+const DEFAULT_BODY_WEIGHT = { kg: '70', lb: '154' };
 const ITEM_H = 44;
 
 function WheelPicker({ items, value, onChange }) {
@@ -106,6 +112,8 @@ export default function ProfileScreen() {
 
   const qc = useQueryClient();
   const { scheme, setScheme } = useTheme();
+  // 个人页的数字全是跨器械汇总（或体重），一律按偏好单位显示
+  const { unit, setUnit } = useWeightUnit();
   const { data: gymData } = useQuery({ queryKey: GYM_DATA_KEY, queryFn: fetchGymData });
   const gyms = gymData?.gyms || [];
   const records = gymData?.records || [];
@@ -183,7 +191,7 @@ export default function ProfileScreen() {
       birthMonth: parts[1] || '01',
       birthDay: parts[2] || '01',
       height: profile.height ? String(profile.height) : '170',
-      weight: profile.weight ? String(profile.weight) : '70',
+      weight: bodyWeightDisplay(profile.weight),
     });
     setEditVisible(true);
   };
@@ -192,12 +200,21 @@ export default function ProfileScreen() {
     const { birthYear, birthMonth, birthDay, ...rest } = editData;
     const data = {
       ...rest,
+      // 没动体重就保留原来的 kg 值，免得显示时的取整换算回去让体重悄悄变了
+      weight: rest.weight === bodyWeightDisplay(profile.weight)
+        ? profile.weight
+        : String(Math.round(fromUnit(Number(rest.weight), unit) * 100) / 100),
       birthDate: birthYear ? `${birthYear}-${birthMonth}-${birthDay}` : '',
     };
     await saveProfile(data);
     setProfile(data);
     setEditVisible(false);
   };
+
+  // 体重在选择器里的显示值（偏好单位下的整数），没填过就给个常见默认值
+  function bodyWeightDisplay(kg) {
+    return kg ? String(Math.round(toUnit(kg, unit))) : DEFAULT_BODY_WEIGHT[unit];
+  }
 
   const handleClearAllData = () => {
     Alert.alert(t('profile.clearTitle'), t('profile.clearMessage'), [
@@ -351,18 +368,18 @@ export default function ProfileScreen() {
             <View style={[s.hlCard, s.hlAccent]}>
               <View style={s.hlTopRow}>
                 <Text style={s.hlLabel}>{t('profile.totalVolume')}</Text>
-                <Text style={s.hlUnit}>{UNIT_VOLUME}</Text>
+                <Text style={s.hlUnit}>{unit}</Text>
               </View>
-              <Text style={s.hlNum} maxFontSizeMultiplier={1.2}>{totalVolume.toLocaleString()}</Text>
+              <Text style={s.hlNum} maxFontSizeMultiplier={1.2}>{volumeNumber(totalVolume, unit).toLocaleString()}</Text>
               <Text style={s.hlSub}>{firstDate ? t('profile.since', { date: firstDate }) : ''}</Text>
             </View>
             {bestDay && (
               <View style={[s.hlCard, s.hlAccent]}>
                 <View style={s.hlTopRow}>
                   <Text style={s.hlLabel}>{t('profile.bestDay')}</Text>
-                  <Text style={s.hlUnit}>{UNIT_VOLUME}</Text>
+                  <Text style={s.hlUnit}>{unit}</Text>
                 </View>
-                <Text style={s.hlNum} maxFontSizeMultiplier={1.2}>{bestDay.vol.toLocaleString()}</Text>
+                <Text style={s.hlNum} maxFontSizeMultiplier={1.2}>{volumeNumber(bestDay.vol, unit).toLocaleString()}</Text>
                 <Text style={s.hlSub}>{[bestDayGymName, bestDay.date].filter(Boolean).join(' · ')}</Text>
               </View>
             )}
@@ -409,11 +426,31 @@ export default function ProfileScreen() {
                   <Text style={s.gymName}>{gym.name}</Text>
                   <Text style={s.gymSub}>{t('common.recordCount', { count })}</Text>
                 </View>
-                <Text style={s.gymVol}>{vol.toLocaleString()}</Text>
+                <Text style={s.gymVol}>{volumeNumber(vol, unit).toLocaleString()}</Text>
               </View>
             ))}
           </View>
         )}
+
+        {/* ── 单位：只管汇总数据；单台器械的单位在器械页/健身房页设 ── */}
+        <View style={s.card}>
+          <Text style={s.cardTitle}>{t('profile.unitTitle')}</Text>
+          <View style={s.themeRow} accessibilityRole="radiogroup" accessibilityLabel={t('profile.unitTitle')}>
+            {WEIGHT_UNITS.map(u => (
+              <TouchableOpacity
+                key={u}
+                style={[s.themeBtn, unit === u && s.themeBtnActive]}
+                onPress={() => setUnit(u)}
+                accessibilityRole="radio"
+                accessibilityLabel={u}
+                accessibilityState={{ checked: unit === u }}
+              >
+                <Text style={[s.unitBtnText, unit === u && s.unitBtnTextActive]}>{u}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          <Text style={s.unitHint}>{t('profile.unitHint')}</Text>
+        </View>
 
         {/* ── 外观 ── */}
         <View style={s.card}>
@@ -677,15 +714,15 @@ export default function ProfileScreen() {
                   >
                     <Text style={s.fieldRowLabel}>{t('profile.fieldWeight')}</Text>
                     <View style={s.fieldRowRight}>
-                      <Text style={s.fieldRowValue}>{editData.weight || '70'} {UNIT_WEIGHT}</Text>
+                      <Text style={s.fieldRowValue}>{editData.weight || DEFAULT_BODY_WEIGHT[unit]} {unit}</Text>
                       <Ionicons name={activeField === 'weight' ? 'chevron-up' : 'chevron-down'} size={14} color={theme.textFaint} />
                     </View>
                   </TouchableOpacity>
                   {activeField === 'weight' && (
                     <View style={s.fieldExpand}>
                       <WheelPicker
-                        items={WEIGHTS}
-                        value={editData.weight || '70'}
+                        items={BODY_WEIGHTS[unit]}
+                        value={editData.weight || DEFAULT_BODY_WEIGHT[unit]}
                         onChange={v => setEditData(d => ({ ...d, weight: v }))}
                       />
                     </View>
@@ -896,6 +933,9 @@ const makeStyles = (t, isDark) => {
     shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4,
     shadowOffset: { width: 0, height: 1 }, elevation: 1,
   },
+  unitBtnText: { fontSize: 15, fontFamily: FONTS.ui, fontWeight: '600', color: t.textMuted },
+  unitBtnTextActive: { color: t.textPrimary },
+  unitHint: { fontSize: 12, color: t.textFaint, fontFamily: FONTS.ui, marginTop: 10, lineHeight: 17 },
   schemeRow: { flexDirection: 'row', gap: 12, flexWrap: 'wrap', justifyContent: 'center' },
   schemeDot: {
     width: 34, height: 34, borderRadius: 11,

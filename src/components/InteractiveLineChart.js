@@ -6,13 +6,14 @@ import Svg, {
 } from 'react-native-svg';
 import { useTheme } from '../ThemeContext';
 import { useTranslation } from 'react-i18next';
-import { UNIT_VOLUME } from '../constants/units';
+import { KG } from '../constants/units';
 
 /**
  * InteractiveLineChart
  * Props:
  *   labels      string[]   x 轴标签（与 data 等长）
- *   data        number[]   y 值
+ *   data        number[]   y 值（已换算到 unit 下）
+ *   unit        string     气泡里显示的单位，默认 kg
  *   width       number     总宽度（含内边距）
  *   height      number     总高度（含内边距），默认 210
  *   color       string     主题色，默认使用 theme.accent
@@ -23,6 +24,7 @@ import { UNIT_VOLUME } from '../constants/units';
 export default function InteractiveLineChart({
   labels,
   data,
+  unit = KG,
   width,
   height = 210,
   color,
@@ -180,7 +182,7 @@ export default function InteractiveLineChart({
                 x={tBx + 10} y={tBy + (hasExtra ? 31 : 33)}
                 textAnchor="start" fontSize={13} fill="#4DEBA5" fontWeight="bold"
               >
-                {data[activeIdx].toLocaleString()} {UNIT_VOLUME}
+                {data[activeIdx].toLocaleString()} {unit}
               </SvgText>
               {hasExtra && (
                 <SvgText

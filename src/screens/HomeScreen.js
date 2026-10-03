@@ -16,6 +16,7 @@ import DraggableList from '../components/DraggableList';
 import RenameModal from '../components/RenameModal';
 import { useTranslation } from 'react-i18next';
 import { newId } from '../ids';
+import { useWeightUnit } from '../UnitContext';
 
 export default function HomeScreen({ navigation }) {
   const { t } = useTranslation();
@@ -25,6 +26,8 @@ export default function HomeScreen({ navigation }) {
   const qc = useQueryClient();
   const { data } = useQuery({ queryKey: GYM_DATA_KEY, queryFn: fetchGymData });
   const gyms = data?.gyms || [];
+  // 新健身房的器械单位先按用户的偏好单位来，进去之后可以改
+  const { unit: preferredUnit } = useWeightUnit();
 
   const [newName, setNewName] = useState('');
   const [adding, setAdding] = useState(false);
@@ -37,13 +40,13 @@ export default function HomeScreen({ navigation }) {
   const closeAllSwipes = () => Object.values(swipeRefs.current).forEach(r => r?.close());
 
   const addMutation = useMutation({
-    mutationFn: ({ id, name, sortOrder }) => dbAddGym(name, id, sortOrder),
-    onMutate: async ({ id, name }) => {
+    mutationFn: ({ id, name, sortOrder, weightUnit }) => dbAddGym(name, id, sortOrder, weightUnit),
+    onMutate: async ({ id, name, weightUnit }) => {
       await qc.cancelQueries({ queryKey: GYM_DATA_KEY });
       const prev = qc.getQueryData(GYM_DATA_KEY);
       qc.setQueryData(GYM_DATA_KEY, old => ({
         ...old,
-        gyms: [...(old?.gyms || []), { id, name, machines: [] }],
+        gyms: [...(old?.gyms || []), { id, name, weightUnit, machines: [] }],
       }));
       return { prev };
     },
@@ -102,7 +105,7 @@ export default function HomeScreen({ navigation }) {
     setNewName('');
     setAdding(false);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    addMutation.mutate({ id: newId(), name, sortOrder: gyms.length });
+    addMutation.mutate({ id: newId(), name, sortOrder: gyms.length, weightUnit: preferredUnit });
   };
 
   const deleteGym = (gym) => {

@@ -11,6 +11,7 @@ import i18n from './i18n';
 
 const DATA_KEY = '@gymtracker:localData';
 const PROFILE_KEY = '@gymtracker:localProfile';
+const WEIGHT_UNIT_KEY = '@gymtracker:localWeightUnit';
 const EMPTY = { gyms: [], records: [], categories: [] };
 
 const DEFAULT_PROFILE = {
@@ -72,9 +73,9 @@ export function sortByIds(list, ids) {
 }
 
 // ── 健身房 ────────────────────────────────────────────
-export function addGym(name, id) {
+export function addGym(name, id, weightUnit) {
   return mutate(data => {
-    const gym = { id: id || newId(), name, machines: [] };
+    const gym = { id: id || newId(), name, weightUnit: weightUnit || 'kg', machines: [] };
     data.gyms.push(gym);
     return gym;
   });
@@ -94,6 +95,13 @@ export function updateGymName(gymId, name) {
   return mutate(data => {
     const gym = data.gyms.find(g => g.id === gymId);
     if (gym) gym.name = name;
+  });
+}
+
+export function updateGymUnit(gymId, weightUnit) {
+  return mutate(data => {
+    const gym = data.gyms.find(g => g.id === gymId);
+    if (gym) gym.weightUnit = weightUnit;
   });
 }
 
@@ -135,6 +143,15 @@ export function updateMachineName(machineId, name) {
     data.gyms.forEach(g => {
       const m = (g.machines || []).find(x => x.id === machineId);
       if (m) m.name = name;
+    });
+  });
+}
+
+export function updateMachineUnit(machineId, weightUnit) {
+  return mutate(data => {
+    data.gyms.forEach(g => {
+      const m = (g.machines || []).find(x => x.id === machineId);
+      if (m) m.weightUnit = weightUnit;
     });
   });
 }
@@ -231,6 +248,20 @@ export async function saveProfile(profile) {
   } catch {}
 }
 
+export async function loadWeightUnit() {
+  try {
+    return (await AsyncStorage.getItem(WEIGHT_UNIT_KEY)) || null;
+  } catch {
+    return null;
+  }
+}
+
+export async function saveWeightUnit(unit) {
+  try {
+    await AsyncStorage.setItem(WEIGHT_UNIT_KEY, unit);
+  } catch {}
+}
+
 // 本地模式没有云端存储桶，把选中的图片复制进 App 的文档目录，
 // 这样即使系统清理缓存目录，头像也还在。
 export async function saveAvatarLocally(localUri) {
@@ -246,5 +277,5 @@ export async function clearAllData() {
 }
 
 export async function clearEverything() {
-  await AsyncStorage.multiRemove([DATA_KEY, PROFILE_KEY]);
+  await AsyncStorage.multiRemove([DATA_KEY, PROFILE_KEY, WEIGHT_UNIT_KEY]);
 }

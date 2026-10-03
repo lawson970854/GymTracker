@@ -8,7 +8,7 @@ import { Swipeable } from 'react-native-gesture-handler';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchGymData, addMachine as dbAddMachine, deleteMachine as dbDeleteMachine, addCategory as dbAddCategory, updateMachineName as dbUpdateMachineName, reorderMachines as dbReorderMachines, sortByIds, getBestRecord } from '../storage';
+import { fetchGymData, addMachine as dbAddMachine, deleteMachine as dbDeleteMachine, addCategory as dbAddCategory, updateMachineName as dbUpdateMachineName, reorderMachines as dbReorderMachines, updateGymUnit as dbUpdateGymUnit, sortByIds, getBestRecord } from '../storage';
 import { GYM_DATA_KEY } from '../queryClient';
 import { onMutationError } from '../mutationError';
 import { useTheme, RADIUS, FONTS } from '../ThemeContext';
@@ -16,7 +16,7 @@ import DraggableList from '../components/DraggableList';
 import RenameModal from '../components/RenameModal';
 import { useTranslation } from 'react-i18next';
 import { newId } from '../ids';
-import { formatVolume } from '../constants/units';
+import { KG, WEIGHT_UNITS, machineUnit, formatVolume } from '../constants/units';
 
 export default function GymScreen({ navigation, route }) {
   const { t } = useTranslation();
@@ -31,6 +31,8 @@ export default function GymScreen({ navigation, route }) {
   const machines = gym?.machines || [];
   const records = data?.records || [];
   const categories = data?.categories || [];
+  // 健身房的器械单位：新器械和没单独设过单位的器械都跟它走
+  const gymUnit = gym?.weightUnit || KG;
 
   const [newName, setNewName] = useState('');
   const [adding, setAdding] = useState(false);
@@ -56,7 +58,7 @@ export default function GymScreen({ navigation, route }) {
         ...old,
         gyms: (old?.gyms || []).map(g =>
           g.id === gymId
-            ? { ...g, machines: [...(g.machines || []), { id, name }] }
+            ? { ...g, machines: [...(g.machines || []), { id, name, weightUnit: null }] }
             : g
         ),
       }));
@@ -133,6 +135,27 @@ export default function GymScreen({ navigation, route }) {
     onSettled: () => qc.invalidateQueries({ queryKey: GYM_DATA_KEY }),
   });
 
+  const unitMutation = useMutation({
+    mutationFn: (next) => dbUpdateGymUnit(gymId, next),
+    onMutate: async (next) => {
+      await qc.cancelQueries({ queryKey: GYM_DATA_KEY });
+      const prev = qc.getQueryData(GYM_DATA_KEY);
+      qc.setQueryData(GYM_DATA_KEY, old => ({
+        ...old,
+        gyms: (old?.gyms || []).map(g => g.id === gymId ? { ...g, weightUnit: next } : g),
+      }));
+      return { prev };
+    },
+    onError: onMutationError(qc, GYM_DATA_KEY, 'updateGymUnit', 'common.saveFailed'),
+    onSettled: () => qc.invalidateQueries({ queryKey: GYM_DATA_KEY }),
+  });
+
+  const changeGymUnit = (next) => {
+    if (next === gymUnit) return;
+    Haptics.selectionAsync();
+    unitMutation.mutate(next);
+  };
+
   const addMachine = () => {
     const name = newName.trim();
     if (!name) return;
@@ -173,13 +196,30 @@ export default function GymScreen({ navigation, route }) {
   const bestFor = (machineId) => {
     const best = getBestRecord(records, gymId, machineId);
     if (!best) return t('gym.noRecord');
-    return t('common.bestValue', { value: formatVolume(best.volume) });
+    return t('common.bestValue', { value: formatVolume(best.volume, machineUnit(data?.gyms, gymId, machineId)) });
   };
 
   return (
     <SafeAreaView style={s.safe}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={headerHeight}>
         <View style={s.container}>
+          <View style={s.unitRow}>
+            <Text style={s.unitLabel}>{t('gym.unitLabel')}</Text>
+            <View style={s.unitSeg} accessibilityRole="radiogroup" accessibilityLabel={t('gym.unitLabel')}>
+              {WEIGHT_UNITS.map(u => (
+                <TouchableOpacity
+                  key={u}
+                  style={[s.unitSegBtn, u === gymUnit && s.unitSegBtnActive]}
+                  onPress={() => changeGymUnit(u)}
+                  accessibilityRole="radio"
+                  accessibilityLabel={u}
+                  accessibilityState={{ checked: u === gymUnit }}
+                >
+                  <Text style={[s.unitSegText, u === gymUnit && s.unitSegTextActive]}>{u}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
           <DraggableList
             data={machines}
             keyExtractor={m => m.id}
@@ -354,6 +394,28 @@ export default function GymScreen({ navigation, route }) {
 const makeStyles = (t) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: t.bg },
   container: { flex: 1, padding: 16 },
+  unitRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    marginBottom: 12, paddingHorizontal: 4,
+  },
+  unitLabel: { fontSize: 12.5, color: t.textMuted, fontFamily: FONTS.ui, fontWeight: '600', letterSpacing: 0.3 },
+  // kg / lb 分段切换，和器械页的同款
+  unitSeg: {
+    flexDirection: 'row', gap: 2,
+    backgroundColor: t.card2, padding: 3, borderRadius: 10,
+    borderWidth: 1, borderColor: t.border,
+  },
+  unitSegBtn: {
+    minWidth: 44, height: 30, borderRadius: 8, paddingHorizontal: 10,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  unitSegBtnActive: {
+    backgroundColor: t.card,
+    shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 }, elevation: 1,
+  },
+  unitSegText: { fontSize: 13, fontFamily: FONTS.ui, fontWeight: '600', color: t.textMuted },
+  unitSegTextActive: { color: t.textPrimary },
   swipeActions: { flexDirection: 'row', marginBottom: 10, gap: 9, paddingRight: 2 },
   swipeAct: {
     width: 64, borderRadius: 18,

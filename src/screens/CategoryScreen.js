@@ -14,7 +14,8 @@ import { onMutationError } from '../mutationError';
 import InteractiveLineChart from '../components/InteractiveLineChart';
 import { useTheme, RADIUS, FONTS } from '../ThemeContext';
 import { useTranslation } from 'react-i18next';
-import { UNIT_VOLUME, formatSetLine, formatVolume } from '../constants/units';
+import { machineUnit, volumeNumber, formatSetLine, formatVolume } from '../constants/units';
+import { useWeightUnit } from '../UnitContext';
 
 const W = Dimensions.get('window').width;
 
@@ -30,6 +31,9 @@ export default function CategoryScreen({ route }) {
   const gyms = gymData?.gyms || [];
   const records = gymData?.records || [];
   const category = gymData?.categories?.find(c => c.id === categoryId) || null;
+  // 单条记录按器械单位显示；跨器械加总的数（趋势、总量）按偏好单位
+  const { unit } = useWeightUnit();
+  const unitOf = (r) => machineUnit(gyms, r.gymId, r.machineId);
 
   const [addModalVisible, setAddModalVisible] = useState(false);
   const [pickerStep, setPickerStep] = useState('gym');
@@ -140,9 +144,9 @@ export default function CategoryScreen({ route }) {
               </View>
               <Text style={s.bestLabel}>{t('category.bestLabel')}</Text>
             </View>
-            <Text style={s.bestVolume}>{overallBest.volume.toLocaleString()}<Text style={s.unitSuffix}> {UNIT_VOLUME}</Text></Text>
+            <Text style={s.bestVolume}>{volumeNumber(overallBest.volume, unitOf(overallBest)).toLocaleString()}<Text style={s.unitSuffix}> {unitOf(overallBest)}</Text></Text>
             <Text style={s.bestDetail}>
-              {formatSetLine(overallBest.weight, overallBest.sets)} · {overallBest.date}
+              {formatSetLine(overallBest.weight, overallBest.sets, unitOf(overallBest))} · {overallBest.date}
             </Text>
             {bestItem && (
               <Text style={s.bestSource}>
@@ -163,7 +167,7 @@ export default function CategoryScreen({ route }) {
               <Text style={s.statLabel} maxFontSizeMultiplier={1.2}>{t('common.statDays')}</Text>
             </View>
             <View style={s.statCard}>
-              <Text style={s.statNum} maxFontSizeMultiplier={1.2}>{totalVolume.toLocaleString()}</Text>
+              <Text style={s.statNum} maxFontSizeMultiplier={1.2}>{volumeNumber(totalVolume, unit).toLocaleString()}</Text>
               <Text style={s.statLabel} maxFontSizeMultiplier={1.2}>{t('common.statVolume')}</Text>
             </View>
           </View>
@@ -174,7 +178,8 @@ export default function CategoryScreen({ route }) {
             <Text style={s.sectionTitle}>{t('category.trendTitle')}</Text>
             <InteractiveLineChart
               labels={chartEntries.map(([d]) => d.slice(5))}
-              data={chartEntries.map(([, v]) => v)}
+              data={chartEntries.map(([, v]) => volumeNumber(v, unit))}
+              unit={unit}
               width={W - 48}
               height={210}
               gradientId="category_grad"
@@ -208,7 +213,7 @@ export default function CategoryScreen({ route }) {
                     <Text style={s.machineName}>{item.machineName}</Text>
                     <Text style={s.gymName}>{item.gymName} · {t('common.recordCount', { count: item.count })}</Text>
                     {item.best && (
-                      <Text style={s.machineBest}>{t('common.bestValue', { value: formatVolume(item.best.volume) })}</Text>
+                      <Text style={s.machineBest}>{t('common.bestValue', { value: formatVolume(item.best.volume, unitOf(item.best)) })}</Text>
                     )}
                   </View>
                 </View>

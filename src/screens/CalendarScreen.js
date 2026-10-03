@@ -10,7 +10,8 @@ import { GYM_DATA_KEY } from '../queryClient';
 import InteractiveLineChart from '../components/InteractiveLineChart';
 import { useTheme, RADIUS, FONTS } from '../ThemeContext';
 import { useTranslation } from 'react-i18next';
-import { UNIT_VOLUME, formatSetLine, formatVolume } from '../constants/units';
+import { machineUnit, volumeNumber, formatSetLine, formatVolume } from '../constants/units';
+import { useWeightUnit } from '../UnitContext';
 
 const W = Dimensions.get('window').width;
 
@@ -164,6 +165,8 @@ export default function CalendarScreen() {
   const { data } = useQuery({ queryKey: GYM_DATA_KEY, queryFn: fetchGymData });
   const gyms    = data?.gyms    || [];
   const records = data?.records || [];
+  // 单条记录按器械单位显示；当天总量和趋势是跨器械加总，按偏好单位
+  const { unit } = useWeightUnit();
 
   // 有训练记录的日期集合
   const recordDates = useMemo(() => new Set(records.map(r => r.date)), [records]);
@@ -217,9 +220,9 @@ export default function CalendarScreen() {
             <View style={s.summaryCard}>
               <View style={s.summaryTopRow}>
                 <Text style={s.summaryLabel}>{t('calendar.dayVolumeLabel')}</Text>
-                <Text style={s.summaryUnit}>{UNIT_VOLUME}</Text>
+                <Text style={s.summaryUnit}>{unit}</Text>
               </View>
-              <Text style={s.summaryValue}>{totalVolume.toLocaleString()}</Text>
+              <Text style={s.summaryValue}>{volumeNumber(totalVolume, unit).toLocaleString()}</Text>
               <Text style={s.summaryCount}>{t('common.recordCount', { count: dayRecords.length })}</Text>
             </View>
 
@@ -229,14 +232,17 @@ export default function CalendarScreen() {
                 {Object.entries(gymGroup.machines).map(([machineId, mg], idx) => (
                   <View key={machineId} style={[s.machineBlock, idx > 0 && s.machineBlockBorder]}>
                     <Text style={s.machineName}>{mg.machineName}</Text>
-                    {mg.records.map(r => (
-                      <View key={r.id} style={s.recRow}>
-                        <Text style={s.recDetail}>
-                          {formatSetLine(r.weight, r.sets, '?')}
-                        </Text>
-                        <Text style={s.recVol}>{formatVolume(r.volume)}</Text>
-                      </View>
-                    ))}
+                    {mg.records.map(r => {
+                      const mu = machineUnit(gyms, r.gymId, r.machineId);
+                      return (
+                        <View key={r.id} style={s.recRow}>
+                          <Text style={s.recDetail}>
+                            {formatSetLine(r.weight, r.sets, mu, '?')}
+                          </Text>
+                          <Text style={s.recVol}>{formatVolume(r.volume, mu)}</Text>
+                        </View>
+                      );
+                    })}
                   </View>
                 ))}
               </View>
@@ -249,7 +255,8 @@ export default function CalendarScreen() {
             <Text style={s.chartTitle}>{t('calendar.chartTitle')}</Text>
             <InteractiveLineChart
               labels={trendEntries.map(([d]) => d.slice(5))}
-              data={trendEntries.map(([, v]) => v)}
+              data={trendEntries.map(([, v]) => volumeNumber(v, unit))}
+              unit={unit}
               width={W - 48}
               height={210}
               gradientId="calendar_grad"

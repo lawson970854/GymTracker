@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchGymData, addRecord as dbAddRecord, updateRecord as dbUpdateRecord, deleteRecord as dbDeleteRecord, calcVolume, getBestRecord, today, formatLocalDate, parseLocalDate } from '../storage';
+import { fetchGymData, addRecord as dbAddRecord, updateRecord as dbUpdateRecord, deleteRecord as dbDeleteRecord, updateMachineUnit as dbUpdateMachineUnit, calcVolume, getBestRecord, today, formatLocalDate, parseLocalDate } from '../storage';
 import { GYM_DATA_KEY } from '../queryClient';
 import { onMutationError } from '../mutationError';
 import SetInput from '../components/SetInput';
@@ -17,25 +17,29 @@ import InteractiveLineChart from '../components/InteractiveLineChart';
 import { useTheme, RADIUS, FONTS } from '../ThemeContext';
 import { useTranslation } from 'react-i18next';
 import { newId } from '../ids';
-import { UNIT_WEIGHT, UNIT_VOLUME, formatWeight, formatSetLine, formatVolume } from '../constants/units';
+import { WEIGHT_UNITS, machineUnit, fromUnit, weightNumber, volumeNumber, nearestOption, weightOptions, formatSetLine, formatVolume } from '../constants/units';
 
 const W = Dimensions.get('window').width;
 
-const WEIGHT_OPTIONS = Array.from({ length: 300 }, (_, i) => i + 1);
-
-function WeightPicker({ value, onChange }) {
+// value 是器械单位下的数值字符串，选项随单位变（kg 按 1、lb 按 5 递增）
+function WeightPicker({ value, unit, onChange }) {
   const { t } = useTranslation();
   const { theme } = useTheme();
   const s = useMemo(() => makeStyles(theme), [theme]);
   const [visible, setVisible] = useState(false);
-  const numVal = parseInt(value) || 20;
+  const options = weightOptions(unit);
+  const numVal = parseFloat(value) || options[0];
+  // 当前值可能不在档位上（旧记录、器械改过单位），滚到最接近的那一档
+  const nearestIdx = options.reduce(
+    (best, o, i) => (Math.abs(o - numVal) < Math.abs(options[best] - numVal) ? i : best), 0,
+  );
 
   return (
     <>
       <TouchableOpacity
         style={s.weightBtn}
         onPress={() => setVisible(true)}
-        accessibilityLabel={t('machine.currentWeightA11y', { weight: formatWeight(value) })}
+        accessibilityLabel={t('machine.currentWeightA11y', { weight: `${value} ${unit}` })}
         accessibilityRole="button"
       >
         <Text style={s.weightVal}>{value}</Text>
@@ -51,19 +55,19 @@ function WeightPicker({ value, onChange }) {
             accessibilityLabel={t('common.close')}
           />
           <View style={s.wPickerBox}>
-            <Text style={s.wPickerTitle}>{t('machine.pickWeight', { unit: UNIT_WEIGHT })}</Text>
+            <Text style={s.wPickerTitle}>{t('machine.pickWeight', { unit })}</Text>
             <FlatList
-              data={WEIGHT_OPTIONS}
+              data={options}
               keyExtractor={n => String(n)}
               style={{ maxHeight: 300 }}
-              initialScrollIndex={Math.max(0, numVal - 1)}
+              initialScrollIndex={nearestIdx}
               getItemLayout={(_, i) => ({ length: 48, offset: 48 * i, index: i })}
               showsVerticalScrollIndicator={true}
               renderItem={({ item }) => (
                 <TouchableOpacity
                   style={[s.wOption, item === numVal && s.wOptionSelected]}
                   onPress={() => { onChange(String(item)); setVisible(false); }}
-                  accessibilityLabel={formatWeight(item)}
+                  accessibilityLabel={`${item} ${unit}`}
                   accessibilityRole="button"
                   accessibilityState={{ selected: item === numVal }}
                 >
@@ -131,12 +135,16 @@ export default function MachineScreen({ route }) {
     .filter(r => r.gymId === gymId && r.machineId === machineId)
     .sort((a, b) => b.date.localeCompare(a.date));
 
+  // 这台器械的单位：本页所有重量和训练量都按它显示，和配重片上印的一致
+  const unit = machineUnit(gymData?.gyms, gymId, machineId);
+
   const bestRecord = getBestRecord(allRecords, gymId, machineId);
   const totalVolume = records.reduce((s, r) => s + r.volume, 0);
   const trainDays = new Set(records.map(r => r.date)).size;
 
   const [date, setDate] = useState(today());
-  const [weight, setWeight] = useState(() => bestRecord ? String(Math.round(bestRecord.weight)) : '20');
+  // weight / editWeight 是器械单位下的数值字符串，写库前再换成 kg
+  const [weight, setWeight] = useState(() => String(nearestOption(bestRecord ? bestRecord.weight : 20, unit)));
   const [sets, setSets] = useState(() => bestRecord ? [...bestRecord.sets] : [10, 10, 10]);
   const [trophy, setTrophy] = useState(null);
 
@@ -182,6 +190,33 @@ export default function MachineScreen({ route }) {
     onSettled: () => qc.invalidateQueries({ queryKey: GYM_DATA_KEY }),
   });
 
+  const unitMutation = useMutation({
+    mutationFn: (next) => dbUpdateMachineUnit(machineId, next),
+    onMutate: async (next) => {
+      await qc.cancelQueries({ queryKey: GYM_DATA_KEY });
+      const prev = qc.getQueryData(GYM_DATA_KEY);
+      qc.setQueryData(GYM_DATA_KEY, old => ({
+        ...old,
+        gyms: (old?.gyms || []).map(g =>
+          g.id === gymId
+            ? { ...g, machines: (g.machines || []).map(m => m.id === machineId ? { ...m, weightUnit: next } : m) }
+            : g
+        ),
+      }));
+      return { prev };
+    },
+    onError: onMutationError(qc, GYM_DATA_KEY, 'updateMachineUnit', 'common.saveFailed'),
+    onSettled: () => qc.invalidateQueries({ queryKey: GYM_DATA_KEY }),
+  });
+
+  // 换单位只是换个说法：记录里存的 kg 不动，表单里正在选的重量换算到新单位最接近的一档
+  const changeUnit = (next) => {
+    if (next === unit) return;
+    Haptics.selectionAsync();
+    setWeight(w => String(nearestOption(fromUnit(parseFloat(w) || 0, unit), next)));
+    unitMutation.mutate(next);
+  };
+
   const deleteMutation = useMutation({
     mutationFn: dbDeleteRecord,
     onMutate: async (recId) => {
@@ -200,18 +235,19 @@ export default function MachineScreen({ route }) {
     const w = parseFloat(weight);
     if (!w || w <= 0) return Alert.alert(t('machine.invalidWeight'));
     if (sets.some(r => r <= 0)) return Alert.alert(t('machine.invalidReps'));
-    const volume = calcVolume(w, sets);
+    const kg = fromUnit(w, unit);
+    const volume = calcVolume(kg, sets);
     const maxVol = records.length ? Math.max(...records.map(r => r.volume)) : 0;
     if (volume > maxVol) setTrophy('gold');
     setDate(today());
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    addMutation.mutate({ id: newId(), gymId, machineId, date, weight: w, sets: [...sets], volume });
+    addMutation.mutate({ id: newId(), gymId, machineId, date, weight: kg, sets: [...sets], volume });
   };
 
   const openEdit = (rec) => {
     setEditRec(rec);
     setEditDate(rec.date);
-    setEditWeight(String(Math.round(rec.weight)));
+    setEditWeight(String(weightNumber(rec.weight, unit)));
     setEditSets([...rec.sets]);
   };
 
@@ -219,8 +255,11 @@ export default function MachineScreen({ route }) {
     const w = parseFloat(editWeight);
     if (!w || w <= 0) return Alert.alert(t('machine.invalidWeight'));
     if (editSets.some(r => r <= 0)) return Alert.alert(t('machine.invalidReps'));
-    const volume = calcVolume(w, editSets);
-    const updated = { ...editRec, date: editDate, weight: w, sets: [...editSets], volume };
+    // 没动重量就原样保留 kg 值。显示值是舍入过的，换算回去会和原值差一点点，
+    // 只改了日期或次数时不能让重量跟着悄悄变。
+    const kg = editWeight === String(weightNumber(editRec.weight, unit)) ? editRec.weight : fromUnit(w, unit);
+    const volume = calcVolume(kg, editSets);
+    const updated = { ...editRec, date: editDate, weight: kg, sets: [...editSets], volume };
     setEditRec(null);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     updateMutation.mutate(updated);
@@ -244,7 +283,7 @@ export default function MachineScreen({ route }) {
       ActionSheetIOS.showActionSheetWithOptions(
         {
           title: rec.date,
-          message: `${formatSetLine(rec.weight, rec.sets, '?')}  |  ${formatVolume(rec.volume)}`,
+          message: `${formatSetLine(rec.weight, rec.sets, unit, '?')}  |  ${formatVolume(rec.volume, unit)}`,
           options: [t('common.cancel'), t('common.edit'), t('common.delete')],
           destructiveButtonIndex: 2,
           cancelButtonIndex: 0,
@@ -257,7 +296,7 @@ export default function MachineScreen({ route }) {
     } else {
       Alert.alert(
         rec.date,
-        `${formatSetLine(rec.weight, rec.sets, '?')}  |  ${formatVolume(rec.volume)}`,
+        `${formatSetLine(rec.weight, rec.sets, unit, '?')}  |  ${formatVolume(rec.volume, unit)}`,
         [
           { text: t('common.edit'), onPress: () => openEdit(rec) },
           { text: t('common.delete'), style: 'destructive', onPress: () => deleteRecord(rec) },
@@ -275,7 +314,7 @@ export default function MachineScreen({ route }) {
     const entries = Object.entries(byDate).sort(([a], [b]) => a.localeCompare(b));
     return {
       labels: entries.map(([d]) => d.slice(5)),
-      data: entries.map(([, v]) => v),
+      data: entries.map(([, v]) => volumeNumber(v, unit)),
     };
   };
 
@@ -295,9 +334,9 @@ export default function MachineScreen({ route }) {
               </View>
               <Text style={s.bestLabel} accessible={false}>{t('machine.bestLabel')}</Text>
             </View>
-            <Text style={s.bestVolume}>{bestRecord.volume.toLocaleString()}<Text style={s.unitSuffix}> {UNIT_VOLUME}</Text></Text>
+            <Text style={s.bestVolume}>{volumeNumber(bestRecord.volume, unit).toLocaleString()}<Text style={s.unitSuffix}> {unit}</Text></Text>
             <Text style={s.bestDetail}>
-              {formatSetLine(bestRecord.weight, bestRecord.sets)} · {bestRecord.date}
+              {formatSetLine(bestRecord.weight, bestRecord.sets, unit)} · {bestRecord.date}
             </Text>
           </View>
         )}
@@ -314,7 +353,7 @@ export default function MachineScreen({ route }) {
             </View>
             <View style={s.statCard}>
               <Text style={s.statNum} maxFontSizeMultiplier={1.3}>
-                {totalVolume.toLocaleString()}
+                {volumeNumber(totalVolume, unit).toLocaleString()}
               </Text>
               <Text style={s.statLabel} maxFontSizeMultiplier={1.3}>{t('common.statVolume')}</Text>
             </View>
@@ -329,8 +368,24 @@ export default function MachineScreen({ route }) {
             <DatePicker value={date} onChange={setDate} />
           </View>
 
-          <Text style={[s.fieldLabel, { marginTop: 14 }]}>{t('machine.weightLabel', { unit: UNIT_WEIGHT })}</Text>
-          <WeightPicker value={weight} onChange={setWeight} />
+          <View style={s.weightHead}>
+            <Text style={[s.fieldLabel, { marginBottom: 0 }]}>{t('machine.weightTitle')}</Text>
+            <View style={s.unitSeg} accessibilityRole="radiogroup" accessibilityLabel={t('machine.unitA11y')}>
+              {WEIGHT_UNITS.map(u => (
+                <TouchableOpacity
+                  key={u}
+                  style={[s.unitSegBtn, u === unit && s.unitSegBtnActive]}
+                  onPress={() => changeUnit(u)}
+                  accessibilityRole="radio"
+                  accessibilityLabel={u}
+                  accessibilityState={{ checked: u === unit }}
+                >
+                  <Text style={[s.unitSegText, u === unit && s.unitSegTextActive]}>{u}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+          <WeightPicker value={weight} unit={unit} onChange={setWeight} />
 
           <View style={{ marginTop: 14 }}>
             <SetInput sets={sets} onChange={setSets} />
@@ -338,7 +393,7 @@ export default function MachineScreen({ route }) {
 
           {weight ? (
             <Text style={s.preview}>
-              {t('machine.estimatedVolume', { volume: formatVolume(calcVolume(parseFloat(weight) || 0, sets)) })}
+              {t('machine.estimatedVolume', { volume: formatVolume(calcVolume(fromUnit(parseFloat(weight) || 0, unit), sets), unit) })}
             </Text>
           ) : null}
 
@@ -353,6 +408,7 @@ export default function MachineScreen({ route }) {
             <InteractiveLineChart
               labels={labels}
               data={chartValues}
+              unit={unit}
               width={W - 48}
               height={210}
               gradientId="machine_grad"
@@ -369,14 +425,14 @@ export default function MachineScreen({ route }) {
                 style={[s.histRow, i === 0 && { borderTopWidth: 0 }]}
                 onPress={() => showActions(r)}
                 accessibilityRole="button"
-                accessibilityLabel={t('machine.recordA11y', { date: r.date, setLine: formatSetLine(r.weight, r.sets, '?'), volume: formatVolume(r.volume) })}
+                accessibilityLabel={t('machine.recordA11y', { date: r.date, setLine: formatSetLine(r.weight, r.sets, unit, '?'), volume: formatVolume(r.volume, unit) })}
               >
                 <View style={s.histTop}>
                   <Text style={s.histDate} maxFontSizeMultiplier={1.2}>{r.date}</Text>
-                  <Text style={s.histVol} maxFontSizeMultiplier={1.2}>{formatVolume(r.volume)}</Text>
+                  <Text style={s.histVol} maxFontSizeMultiplier={1.2}>{formatVolume(r.volume, unit)}</Text>
                 </View>
                 <Text style={s.histDetail} maxFontSizeMultiplier={1.2}>
-                  {formatSetLine(r.weight, r.sets, '?')}
+                  {formatSetLine(r.weight, r.sets, unit, '?')}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -399,8 +455,8 @@ export default function MachineScreen({ route }) {
               <DatePicker value={editDate} onChange={setEditDate} />
             </View>
 
-            <Text style={[s.fieldLabel, { marginTop: 14 }]}>{t('machine.weightLabel', { unit: UNIT_WEIGHT })}</Text>
-            <WeightPicker value={editWeight} onChange={setEditWeight} />
+            <Text style={[s.fieldLabel, { marginTop: 14 }]}>{t('machine.weightLabel', { unit })}</Text>
+            <WeightPicker value={editWeight} unit={unit} onChange={setEditWeight} />
 
             <View style={{ marginTop: 14 }}>
               <SetInput sets={editSets} onChange={setEditSets} />
@@ -408,7 +464,7 @@ export default function MachineScreen({ route }) {
 
             {editWeight ? (
               <Text style={s.preview}>
-                {t('machine.volumeLabel', { volume: formatVolume(calcVolume(parseFloat(editWeight) || 0, editSets)) })}
+                {t('machine.volumeLabel', { volume: formatVolume(calcVolume(fromUnit(parseFloat(editWeight) || 0, unit), editSets), unit) })}
               </Text>
             ) : null}
 
@@ -497,6 +553,27 @@ const makeStyles = (t) => StyleSheet.create({
     fontSize: 12.5, color: t.textMuted, fontFamily: FONTS.ui,
     fontWeight: '600', letterSpacing: 0.3, marginBottom: 8,
   },
+  weightHead: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    marginTop: 14, marginBottom: 8,
+  },
+  // kg / lb 分段切换，样式照个人页的主题切换
+  unitSeg: {
+    flexDirection: 'row', gap: 2,
+    backgroundColor: t.card2, padding: 3, borderRadius: 10,
+    borderWidth: 1, borderColor: t.border,
+  },
+  unitSegBtn: {
+    minWidth: 44, height: 30, borderRadius: 8, paddingHorizontal: 10,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  unitSegBtnActive: {
+    backgroundColor: t.card,
+    shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 }, elevation: 1,
+  },
+  unitSegText: { fontSize: 13, fontFamily: FONTS.ui, fontWeight: '600', color: t.textMuted },
+  unitSegTextActive: { color: t.textPrimary },
   weightBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     borderWidth: 1, borderColor: t.border, borderRadius: RADIUS.input,
